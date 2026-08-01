@@ -1,0 +1,701 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Grade {
+  FONDATEUR
+  CO_FONDATEUR
+  DIRECTEUR_GENERAL
+  DIRECTEUR_POLE
+  RESPONSABLE
+  CHEF_EQUIPE
+  COLLABORATEUR
+  RECRUE
+}
+
+enum PoleName {
+  GENERAL
+  GARRYS_MOD
+  WEB
+  TECHNIQUE
+  COMMUNAUTAIRE
+  MARKETING
+  PARTENARIATS
+  ANIMATION
+}
+
+enum MemberStatus {
+  ACTIF
+  EN_CONGE
+  SUSPENDU
+  PARTI
+}
+
+enum ApplicationType {
+  RECRUTEMENT_EXTERNE
+  CANDIDATURE_INTERNE
+}
+
+enum ApplicationStatus {
+  EN_ATTENTE
+  EN_ENTRETIEN
+  ACCEPTEE
+  REFUSEE
+  ANNULEE
+}
+
+enum SanctionType {
+  AVERTISSEMENT
+  BLAME
+  SUSPENSION
+  EXCLUSION
+}
+
+enum SanctionSeverity {
+  MINEURE
+  MODEREE
+  GRAVE
+  CRITIQUE
+}
+
+enum MemberHistoryEventType {
+  ARRIVEE
+  DEPART
+  PROMOTION
+  RETROGRADATION
+  CHANGEMENT_POLE
+  AVERTISSEMENT
+  SANCTION
+  RETOUR_CONGE
+  MISE_EN_CONGE
+}
+
+enum ProjectStatus {
+  A_FAIRE
+  EN_COURS
+  EN_ATTENTE
+  EN_TEST
+  TERMINE
+  ARCHIVE
+}
+
+enum TaskStatus {
+  A_FAIRE
+  EN_COURS
+  EN_ATTENTE
+  EN_TEST
+  TERMINE
+}
+
+enum Priority {
+  BASSE
+  NORMALE
+  HAUTE
+  CRITIQUE
+}
+
+enum AnnouncementPriority {
+  INFO
+  IMPORTANTE
+  URGENTE
+}
+
+enum MeetingStatus {
+  PLANIFIEE
+  EN_COURS
+  TERMINEE
+  ANNULEE
+}
+
+enum DecisionStatus {
+  PROPOSEE
+  VALIDEE
+  REJETEE
+  APPLIQUEE
+}
+
+enum ExpenseStatus {
+  SOUMISE
+  VALIDEE_RESPONSABLE
+  VALIDEE_DIRECTEUR
+  ACCEPTEE
+  REFUSEE
+}
+
+enum ObjectiveScope {
+  HEBDOMADAIRE
+  MENSUEL
+  POLE
+  INDIVIDUEL
+}
+
+enum ObjectiveStatus {
+  EN_COURS
+  ATTEINT
+  MANQUE
+  ANNULE
+}
+
+enum AlertSeverity {
+  INFO
+  ATTENTION
+  CRITIQUE
+}
+
+enum AlertStatus {
+  ACTIVE
+  RESOLUE
+  IGNOREE
+}
+
+enum RoadmapStatus {
+  PLANIFIE
+  EN_COURS
+  LIVRE
+  ABANDONNE
+}
+
+enum DocumentCategory {
+  PROCEDURE
+  TUTORIEL
+  GUIDE
+  CAHIER_DES_CHARGES
+}
+
+enum AbsenceType {
+  CONGE
+  MALADIE
+  INDISPONIBILITE
+  AUTRE
+}
+
+enum AbsenceStatus {
+  DEMANDEE
+  VALIDEE
+  REFUSEE
+  TERMINEE
+}
+
+// ============================================================
+// CORE : CONFIGURATION & MEMBRES & PÔLES
+// ============================================================
+
+model GuildConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+model Member {
+  id            String   @id @default(cuid())
+  discordId     String   @unique
+  username      String
+  displayName   String?
+  grade         Grade
+  status        MemberStatus @default(ACTIF)
+  joinedAt      DateTime @default(now())
+  leftAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  poleId        String?
+  pole          Pole?    @relation("PoleMembers", fields: [poleId], references: [id])
+
+  // Relations RH
+  applications          RecruitmentApplication[] @relation("ApplicationCandidate")
+  reviewedApplications  RecruitmentApplication[] @relation("ApplicationReviewer")
+  sanctionsReceived     Sanction[] @relation("SanctionTarget")
+  sanctionsIssued       Sanction[] @relation("SanctionIssuer")
+  warningsReceived      Warning[] @relation("WarningTarget")
+  warningsIssued        Warning[] @relation("WarningIssuer")
+  promotionsReceived    PromotionHistory[] @relation("PromotionTarget")
+  promotionsIssued      PromotionHistory[] @relation("PromotionIssuer")
+  memberHistoryEvents   MemberHistory[] @relation("HistorySubject")
+  memberHistoryActor    MemberHistory[] @relation("HistoryActor")
+
+  // Relations Projets/Tâches
+  managedProjects       Project[] @relation("ProjectManager")
+  projectMemberships    ProjectMember[]
+  projectComments       ProjectComment[]
+  assignedTasks         Task[] @relation("TaskAssignee")
+  createdTasks          Task[] @relation("TaskCreator")
+  taskComments          TaskComment[]
+
+  // Annonces
+  createdAnnouncements  Announcement[] @relation("AnnouncementAuthor")
+
+  // Modules non codés ce tour
+  organizedMeetings     Meeting[] @relation("MeetingOrganizer")
+  meetingAttendances     MeetingAttendee[]
+  decisionsProposed     Decision[] @relation("DecisionProposer")
+  expensesSubmitted     Expense[] @relation("ExpenseSubmitter")
+  expensesReviewed      Expense[] @relation("ExpenseReviewer")
+  objectivesOwned       Objective[] @relation("ObjectiveOwner")
+  alertsAssigned        Alert[] @relation("AlertAssignee")
+  auditLogs             AuditLog[] @relation("AuditActor")
+  roadmapItemsOwned     RoadmapItem[] @relation("RoadmapOwner")
+  documentsAuthored     Document[] @relation("DocumentAuthor")
+  absences              Absence[] @relation("AbsenceMember")
+  absencesReviewed      Absence[] @relation("AbsenceReviewer")
+
+  @@index([grade])
+  @@index([poleId])
+  @@index([status])
+  @@index([discordId])
+}
+
+model Pole {
+  id           String   @id @default(cuid())
+  name         PoleName @unique
+  displayName  String
+  emoji        String?
+  color        String?
+  categoryChannelId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  members              Member[] @relation("PoleMembers")
+  projects             Project[]
+  announcementTargets  AnnouncementPoleTarget[]
+  objectives           Objective[]
+  kpiSnapshots         KPISnapshot[]
+  roadmapItems         RoadmapItem[]
+  applications         RecruitmentApplication[]
+
+  @@index([name])
+}
+
+// ============================================================
+// MODULE RH
+// ============================================================
+
+model RecruitmentApplication {
+  id           String   @id @default(cuid())
+  type         ApplicationType
+  status       ApplicationStatus @default(EN_ATTENTE)
+
+  candidateId  String?
+  candidate    Member?  @relation("ApplicationCandidate", fields: [candidateId], references: [id])
+  candidateDiscordId String
+  candidatePseudo    String
+
+  targetPoleId String?
+  targetPole   Pole?    @relation(fields: [targetPoleId], references: [id])
+
+  motivation   String   @db.Text
+  reviewerId   String?
+  reviewer     Member?  @relation("ApplicationReviewer", fields: [reviewerId], references: [id])
+  decisionNote String?  @db.Text
+
+  submittedAt  DateTime @default(now())
+  decidedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([candidateId])
+  @@index([targetPoleId])
+}
+
+model Sanction {
+  id          String   @id @default(cuid())
+  type        SanctionType
+  severity    SanctionSeverity
+  reason      String   @db.Text
+  targetId    String
+  target      Member   @relation("SanctionTarget", fields: [targetId], references: [id])
+  issuerId    String
+  issuer      Member   @relation("SanctionIssuer", fields: [issuerId], references: [id])
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([targetId])
+  @@index([type])
+}
+
+model Warning {
+  id          String   @id @default(cuid())
+  reason      String   @db.Text
+  targetId    String
+  target      Member   @relation("WarningTarget", fields: [targetId], references: [id])
+  issuerId    String
+  issuer      Member   @relation("WarningIssuer", fields: [issuerId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([targetId])
+}
+
+model PromotionHistory {
+  id           String   @id @default(cuid())
+  targetId     String
+  target       Member   @relation("PromotionTarget", fields: [targetId], references: [id])
+  issuerId     String
+  issuer       Member   @relation("PromotionIssuer", fields: [issuerId], references: [id])
+  previousGrade Grade
+  newGrade     Grade
+  reason       String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([targetId])
+}
+
+model MemberHistory {
+  id           String   @id @default(cuid())
+  subjectId    String
+  subject      Member   @relation("HistorySubject", fields: [subjectId], references: [id])
+  actorId      String?
+  actor        Member?  @relation("HistoryActor", fields: [actorId], references: [id])
+  eventType    MemberHistoryEventType
+  details      String?  @db.Text
+  previousValue String?
+  newValue     String?
+  createdAt    DateTime @default(now())
+
+  @@index([subjectId])
+  @@index([eventType])
+}
+
+// ============================================================
+// MODULE PROJETS & TÂCHES
+// ============================================================
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  status      ProjectStatus @default(A_FAIRE)
+  priority    Priority @default(NORMALE)
+  dueDate     DateTime?
+
+  poleId      String?
+  pole        Pole?    @relation(fields: [poleId], references: [id])
+
+  managerId   String
+  manager     Member   @relation("ProjectManager", fields: [managerId], references: [id])
+
+  members     ProjectMember[]
+  tasks       Task[]
+  comments    ProjectComment[]
+
+  channelId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  archivedAt  DateTime?
+
+  roadmapItems RoadmapItem[]
+
+  @@index([status])
+  @@index([poleId])
+  @@index([managerId])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+  joinedAt  DateTime @default(now())
+
+  @@unique([projectId, memberId])
+  @@index([memberId])
+}
+
+model ProjectComment {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    Member   @relation(fields: [authorId], references: [id])
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  status      TaskStatus @default(A_FAIRE)
+  priority    Priority @default(NORMALE)
+  dueDate     DateTime?
+
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+
+  assigneeId  String?
+  assignee    Member?  @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creatorId   String
+  creator     Member   @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  comments    TaskComment[]
+  attachments Attachment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  @@index([status])
+  @@index([assigneeId])
+  @@index([projectId])
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    Member   @relation(fields: [authorId], references: [id])
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileUrl   String   @db.Text
+  uploadedAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+// ============================================================
+// MODULE ANNONCES
+// ============================================================
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  priority    AnnouncementPriority @default(INFO)
+  authorId    String
+  author      Member   @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  targets     AnnouncementPoleTarget[]
+  createdAt   DateTime @default(now())
+
+  @@index([priority])
+}
+
+model AnnouncementPoleTarget {
+  id              String   @id @default(cuid())
+  announcementId  String
+  announcement    Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  poleId          String
+  pole            Pole     @relation(fields: [poleId], references: [id])
+  channelId       String?
+  messageId       String?
+  publishedAt     DateTime?
+
+  @@unique([announcementId, poleId])
+  @@index([poleId])
+}
+
+// ============================================================
+// MODULES CONÇUS MAIS NON CODÉS CE TOUR
+// ============================================================
+
+model Meeting {
+  id           String   @id @default(cuid())
+  title        String
+  agenda       String?  @db.Text
+  status       MeetingStatus @default(PLANIFIEE)
+  scheduledAt  DateTime
+  endedAt      DateTime?
+
+  organizerId  String
+  organizer    Member   @relation("MeetingOrganizer", fields: [organizerId], references: [id])
+
+  attendees    MeetingAttendee[]
+  decisions    MeetingDecision[]
+
+  summary      String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model MeetingAttendee {
+  id         String  @id @default(cuid())
+  meetingId  String
+  meeting    Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     Member  @relation(fields: [memberId], references: [id])
+  present    Boolean @default(false)
+
+  @@unique([meetingId, memberId])
+}
+
+model MeetingDecision {
+  id         String   @id @default(cuid())
+  meetingId  String
+  meeting    Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  decisionId String?  @unique
+  decision   Decision? @relation(fields: [decisionId], references: [id])
+  note       String?  @db.Text
+}
+
+model Decision {
+  id           String   @id @default(cuid())
+  title        String
+  description  String   @db.Text
+  status       DecisionStatus @default(PROPOSEE)
+  proposerId   String
+  proposer     Member   @relation("DecisionProposer", fields: [proposerId], references: [id])
+  meetingLink  MeetingDecision?
+  createdAt    DateTime @default(now())
+  decidedAt    DateTime?
+
+  @@index([status])
+}
+
+model Expense {
+  id              String   @id @default(cuid())
+  title           String
+  amount          Decimal  @db.Decimal(10, 2)
+  description     String?  @db.Text
+  status          ExpenseStatus @default(SOUMISE)
+
+  submitterId     String
+  submitter       Member   @relation("ExpenseSubmitter", fields: [submitterId], references: [id])
+  reviewerId      String?
+  reviewer        Member?  @relation("ExpenseReviewer", fields: [reviewerId], references: [id])
+
+  receiptUrl      String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  decidedAt       DateTime?
+
+  @@index([status])
+  @@index([submitterId])
+}
+
+model Objective {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  scope       ObjectiveScope
+  status      ObjectiveStatus @default(EN_COURS)
+
+  poleId      String?
+  pole        Pole?    @relation(fields: [poleId], references: [id])
+  ownerId     String?
+  owner       Member?  @relation("ObjectiveOwner", fields: [ownerId], references: [id])
+
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([scope])
+  @@index([poleId])
+  @@index([status])
+}
+
+model KPISnapshot {
+  id          String   @id @default(cuid())
+  poleId      String?
+  pole        Pole?    @relation(fields: [poleId], references: [id])
+  weekStart   DateTime
+  metricName  String
+  metricValue Float
+  createdAt   DateTime @default(now())
+
+  @@index([poleId])
+  @@index([weekStart])
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  severity    AlertSeverity
+  status      AlertStatus @default(ACTIVE)
+  assigneeId  String?
+  assignee    Member?  @relation("AlertAssignee", fields: [assigneeId], references: [id])
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+
+  @@index([status])
+  @@index([severity])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  actor       Member?  @relation("AuditActor", fields: [actorId], references: [id])
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model RoadmapItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  status      RoadmapStatus @default(PLANIFIE)
+  poleId      String?
+  pole        Pole?    @relation(fields: [poleId], references: [id])
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  ownerId     String?
+  owner       Member?  @relation("RoadmapOwner", fields: [ownerId], references: [id])
+  targetDate  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([status])
+  @@index([poleId])
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  title       String
+  category    DocumentCategory
+  content     String?  @db.Text
+  fileUrl     String?  @db.Text
+  authorId    String
+  author      Member   @relation("DocumentAuthor", fields: [authorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+model Absence {
+  id          String   @id @default(cuid())
+  type        AbsenceType
+  status      AbsenceStatus @default(DEMANDEE)
+  memberId    String
+  member      Member   @relation("AbsenceMember", fields: [memberId], references: [id])
+  reviewerId  String?
+  reviewer    Member?  @relation("AbsenceReviewer", fields: [reviewerId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([memberId])
+  @@index([status])
+}

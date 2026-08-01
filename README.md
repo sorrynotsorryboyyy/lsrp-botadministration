@@ -1,0 +1,244 @@
+# Bot Discord d'Administration Interne — La Scène RP
+
+Un bot Discord professionnel conçu pour centraliser l'administration interne de La Scène RP. Gestion d'équipe, projets, tâches, RH, annonces, réunions et bien plus, directement depuis Discord.
+
+## 🎯 Caractéristiques
+
+### Modules opérationnels
+- **Core technique** : Logger, DB Prisma, command/event handlers, middleware de permissions
+- **Setup automatique** (`/setup`) : création idempotente de la structure Discord (9 rôles, 13 catégories, ~64 salons)
+- **Module RH** (`/rh`) : candidatures, recrutements, promotions, rétrogradations, changements de pôle, avertissements, sanctions, dossier RH
+- **Module Projets** (`/projet`) : création, workflow de statuts, participants, commentaires
+- **Module Tâches** (`/tache`) : création, assignation, statuts, commentaires, pièces jointes
+- **Module Annonces** (`/annonce`) : rédaction assistée et diffusion multi-pôles
+
+### Modules conçus en schéma uniquement
+- Dashboard administratif
+- Réunions (planification, agenda, compte-rendus)
+- Décisions (propositions, validation, historique)
+- Dépenses (workflow validation Employé → Responsable → Directeur)
+- Objectifs (hebdo, par pôle, progression)
+- KPI hebdomadaires automatiques
+- Alertes (objectifs manqués, projets bloqués, etc.)
+- Journal d'audit complet
+- Roadmap interne
+- Bibliothèque de documents
+- Gestion des absences
+
+## 📋 Structure
+
+```
+lascenerp/
+├── prisma/schema.prisma          # Schéma complet (tous les modules)
+├── src/
+│   ├── core/                      # Moteur Discord.js (Client, CommandHandler, EventHandler, Logger, ErrorHandler)
+│   ├── commands/                  # Déclaration slash commands (stubs actuellement)
+│   ├── events/                    # Listeners Discord.js
+│   ├── database/                  # Connexion Prisma
+│   ├── services/                  # Services transverses (Permission, Member, GuildStructure, Embed)
+│   ├── middlewares/               # Middlewares (permissions, erreurs)
+│   ├── config/                    # Configuration statique (pôles, structure guild)
+│   ├── types/                     # Types TypeScript
+│   ├── utils/                     # Fonctions utiles
+│   ├── jobs/                      # Tâches planifiées (crons)
+│   └── modules/                   # Logique métier par domaine
+│       ├── setup/                 # Setup + provisioning rôles/salons
+│       ├── rh/                    # RH, candidatures, promotions
+│       ├── projects/              # Gestion des projets
+│       ├── tasks/                 # Gestion des tâches
+│       ├── announcements/         # Annonces + diffusion
+│       └── [autres modules vides] # Structure réservée pour futurs modules
+├── .env.example
+├── package.json
+└── tsconfig.json
+```
+
+## 🚀 Démarrage
+
+### Prérequis
+- Node.js 18+
+- npm ou yarn
+- Une base MySQL (Railway recommandé)
+- Un bot Discord v14+ en dev sur un serveur de test
+
+### Installation
+
+```bash
+# Cloner/initialiser le projet
+cd lascenerp
+npm install
+
+# Copier la config d'environnement
+cp .env.example .env
+
+# Remplir .env avec :
+# - DISCORD_TOKEN : token du bot
+# - GUILD_ID : ID du serveur de test
+# - DATABASE_URL : chaîne MySQL (voir section Base de données)
+```
+
+### Base de données
+
+```bash
+# Créer la base de données et appliquer le schéma
+npx prisma migrate dev --name init
+
+# (Optionnel) Ouvrir Prisma Studio pour visualiser les données
+npx prisma studio
+```
+
+### Lancement
+
+```bash
+# En développement (rechargement à chaud via tsx)
+npm run dev
+
+# Build TypeScript uniquement (vérification de types)
+npm run build
+
+# Production
+npm run build
+npm start
+```
+
+## 🔧 Configuration
+
+### Hiérarchie des grades
+
+9 grades de permission cascade (chaque grade peut agir sur tout ce qui lui est inférieur) :
+
+1. **Fondateur** — accès total (Admin Discord)
+2. **Co-Fondateur** — accès total (Admin Discord)
+3. **Directeur Général** — gestion globale, rétrogradations
+4. **Directeur de Pôle** — gestion du pôle, promotions, validations
+5. **Responsable** — validation dépenses/candidatures, signalements
+6. **Chef d'équipe** — création projet/tâche, gestion directe, avertissements
+7. **Collaborateur** — création tâche, participation projets
+8. **Recrue** — accès limité (onboarding + candidatures internes)
+
+### Pôles
+
+8 pôles opérationnels, chacun avec la même structure de salons :
+- 📢 Annonces
+- 💬 Discussion
+- 🔧 Projets
+- 📋 Tâches
+- 🎯 Objectifs
+
+Pôles :
+1. **Général** — communications transversales
+2. **Garry's Mod** — GM
+3. **Web** — développement web
+4. **Technique** — infrastructure/support
+5. **Communautaire** — gestion communauté
+6. **Marketing** — stratégie/promotion
+7. **Partenariats** — partenaires
+8. **Animation** — événements
+
+## 📝 Workflows clés (à implémenter)
+
+### Setup automatique (`/setup`)
+1. Crée 9 rôles hiérarchiques colorés avec permissions Discord adaptées
+2. Crée catégories + salons complets (Direction, Général, 8 pôles, RH, Documents, Archives)
+3. Applique overwrites de permissions basés sur les grades
+4. Persiste IDs générés en DB (`GuildConfig`)
+5. Rapport d'exécution indiquant succès/erreurs
+
+### RH — Candidature → Promotion
+1. Candidat lance `/rh candidature` → modal motivation
+2. Annonce dans `#candidatures` avec boutons Accepter/Refuser/Entretien
+3. Si acceptée → création `Member` DB + historique `ARRIVEE`
+4. Promotion effective via `/rh promouvoir` (Directeur de Pôle+ only) → mise à jour grade + échange rôles Discord
+
+### Annonces
+1. `/annonce creer` → modal (titre, contenu) + option priorité
+2. Select menu : pôles concernés (ou "Tous")
+3. Un `Announcement` + une ligne `AnnouncementPoleTarget` par pôle
+4. Diffusion automatique dans chaque salon `annonces` cible
+5. Rapport éphémère d'exécution
+
+### Projets/Tâches
+1. Statuts contrôlés (À faire → En cours → En attente → En test → Terminé)
+2. Select menu pour transitions (pas de saisie libre)
+3. Chaque changement loggé comme `ProjectComment` système
+4. Commentaires et pièces jointes supportés
+
+## 🔐 Permissions
+
+- Basées sur **rôles Discord natifs** (pas de table séparée)
+- Cascade hiérarchique : un grade N gère les actions de tous les grades < N
+- Exceptions métier documentées par module (ex: promotion réservée Directeur de Pôle+)
+- Middleware centralisé qui vérifie `minGrade` avant `execute()`
+
+## 📊 Architecture
+
+### Découplage commandes ↔ logique métier
+- `commands/` : fichiers fins qui déclarent la structure et délèguent aux handlers
+- `modules/<nom>/handlers/` : handlers de commandes slash
+- `modules/<nom>/services/` : logique pure (indépendante de Discord.js)
+- `modules/<nom>/embeds/` : générateurs d'embeds
+- `modules/<nom>/buttons/`, `/modals/`, `/selectMenus/` : handlers d'interactions
+
+### Routage des interactions
+- Slash commands : `CommandHandler` → `client.commands` → `execute()`
+- Boutons/selects/modals : `interactionCreate` event → routeur par `customId` prefix → module handler
+
+### Services transverses
+- `PermissionService` : résolution rôle Discord → grade, vérification cascade
+- `MemberService` : CRUD `Member` + sync avec Discord ID
+- `GuildStructureService` : persist/lecture IDs rôles/salons en DB (`GuildConfig`)
+- `EmbedFactory` : styles/couleurs communs
+
+## 🛠️ Développement
+
+### Ajouter une nouvelle commande
+
+1. Créer `src/commands/mycommand.ts`
+2. Implémenter `CommandModule` (data + minGrade + execute)
+3. Si logique métier complexe → créer `src/modules/mymodule/handlers/` + `services/`
+
+### Ajouter un bouton/select/modal
+
+1. Créer handler dans `src/modules/mymodule/buttons/`, `selectMenus/`, ou `modals/`
+2. Exporter avec `customIdPrefix`
+3. Enregistrer dans `client.buttons`/`selectMenus`/`modals` au démarrage (automatisé par EventHandler futur)
+4. Routeur `interactionCreate` dispatch sur le prefix
+
+### Styles d'embeds
+
+Utiliser `EmbedFactory` pour cohérence :
+- `.baseEmbed()` — base + timestamp
+- `.errorEmbed(title, desc)` — rouge
+- `.successEmbed(title, desc)` — vert
+- `.infoEmbed(title, desc)` — bleu
+- `.warningEmbed(title, desc)` — orange
+- `.getPriorityColor(priority)` — couleur selon priorité
+
+## 📂 Premier lancement
+
+1. **Serveur de test** : créer un Discord privé de test
+2. **Bot setup** : créer application Discord, générer token, inviter sur le serveur de test
+3. **Env** : remplir `.env` avec token et guild ID de test
+4. **DB** : `npx prisma migrate dev --name init`
+5. **Lancer** : `npm run dev`
+6. **Exécuter `/setup`** (Fondateur seul) → création structure complète
+7. **Tester les commandes** selon les workflows
+
+## 🔍 Validation
+
+- **Types** : `npm run typecheck` (TypeScript strict, sans émission)
+- **Build** : `npm run build` (compile puis résout les alias de chemins)
+- **Schéma Prisma** : `npm run prisma:validate`
+- **Logs** : `logs/all.log` et `logs/error.log`
+
+## 📚 Documentation
+
+Voir `plan.md` pour l'architecture détaillée, la hiérarchie complète et les workflows.
+
+## 📄 Licence
+
+MIT
+
+## 👥 Auteur
+
+La Scène RP — 2024
