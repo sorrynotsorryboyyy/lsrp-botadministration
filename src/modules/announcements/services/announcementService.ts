@@ -1,5 +1,7 @@
 import { AnnouncementPriority, Member, PoleName, Prisma } from '@prisma/client';
 import prisma from '@database/prisma';
+import { recordAudit } from '@modules/audit/services/auditService';
+import { AuditAction, AuditEntity } from '@modules/audit/actions';
 import logger from '@core/Logger';
 
 export type AnnouncementWithRelations = Prisma.AnnouncementGetPayload<{
@@ -52,6 +54,14 @@ export async function createAnnouncement(
   logger.info(
     `Annonce créée : "${announcement.title}" → ${poles.length} pôle(s), par ${input.author.username}`,
   );
+
+  await recordAudit({
+    action: AuditAction.ANNOUNCEMENT_PUBLISHED,
+    entityType: AuditEntity.ANNOUNCEMENT,
+    entityId: announcement.id,
+    actorId: input.author.id,
+    metadata: { titre: announcement.title, priorite: input.priority, poles: poles.length },
+  });
 
   return announcement;
 }

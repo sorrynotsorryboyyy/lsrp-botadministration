@@ -4,26 +4,38 @@ Un bot Discord professionnel conçu pour centraliser l'administration interne de
 
 ## 🎯 Caractéristiques
 
-### Modules opérationnels
-- **Core technique** : Logger, DB Prisma, command/event handlers, middleware de permissions
-- **Setup automatique** (`/setup`) : création idempotente de la structure Discord (9 rôles, 13 catégories, ~64 salons)
-- **Module RH** (`/rh`) : candidatures, recrutements, promotions, rétrogradations, changements de pôle, avertissements, sanctions, dossier RH
-- **Module Projets** (`/projet`) : création, workflow de statuts, participants, commentaires
-- **Module Tâches** (`/tache`) : création, assignation, statuts, commentaires, pièces jointes
-- **Module Annonces** (`/annonce`) : rédaction assistée et diffusion multi-pôles
+### Modules opérationnels — 16 commandes
 
-### Modules conçus en schéma uniquement
-- Dashboard administratif
-- Réunions (planification, agenda, compte-rendus)
-- Décisions (propositions, validation, historique)
-- Dépenses (workflow validation Employé → Responsable → Directeur)
-- Objectifs (hebdo, par pôle, progression)
-- KPI hebdomadaires automatiques
-- Alertes (objectifs manqués, projets bloqués, etc.)
-- Journal d'audit complet
-- Roadmap interne
-- Bibliothèque de documents
-- Gestion des absences
+| Commande | Périmètre | Grade minimum |
+|---|---|---|
+| `/setup` | Structure Discord complète, idempotente | Fondateur |
+| `/rh` | Candidatures, promotions, sanctions, dossier RH | Recrue |
+| `/projet` | Création, workflow, participants, commentaires | Collaborateur |
+| `/tache` | Création, assignation, statuts, pièces jointes | Collaborateur |
+| `/annonce` | Rédaction assistée, diffusion multi-pôles | Chef d'équipe |
+| `/reunion` | Planification, présences, comptes-rendus | Chef d'équipe |
+| `/decision` | Propositions, arbitrage, conversion en tâches | Responsable |
+| `/depense` | Soumission, validation à deux niveaux | Collaborateur |
+| `/objectif` | Objectifs hebdo/mensuels/pôle, clôture | Chef d'équipe |
+| `/kpi` | Indicateurs hebdomadaires et tendances | Responsable |
+| `/alertes` | Détection d'anomalies | Responsable |
+| `/dashboard` | Vue d'ensemble consolidée | Chef d'équipe |
+| `/journal` | Journal d'audit filtrable | Responsable |
+| `/roadmap` | Feuille de route interne | Responsable |
+| `/document` | Bibliothèque documentaire | Collaborateur |
+| `/absence` | Déclaration et validation d'absences | Recrue |
+
+### Tâches planifiées
+
+| Fréquence | Traitement |
+|---|---|
+| Quotidien, 8 h | Clôture des absences échues, réactivation des membres |
+| Toutes les 6 h | Détection d'anomalies, alertes critiques en direction |
+| Lundi, 9 h | Instantané KPI de la semaine écoulée |
+
+Tous les modules du cahier des charges initial sont implémentés :
+Dashboard, Réunions, Décisions, Dépenses, Objectifs, KPI, Alertes, Journal
+d'audit, Roadmap, Documents et Absences.
 
 ## 📋 Structure
 
@@ -32,7 +44,7 @@ lascenerp/
 ├── prisma/schema.prisma          # Schéma complet (tous les modules)
 ├── src/
 │   ├── core/                      # Moteur Discord.js (Client, CommandHandler, EventHandler, Logger, ErrorHandler)
-│   ├── commands/                  # Déclaration slash commands (stubs actuellement)
+│   ├── commands/                  # Déclaration slash commands (16 commandes)
 │   ├── events/                    # Listeners Discord.js
 │   ├── database/                  # Connexion Prisma
 │   ├── services/                  # Services transverses (Permission, Member, GuildStructure, Embed)
@@ -47,7 +59,8 @@ lascenerp/
 │       ├── projects/              # Gestion des projets
 │       ├── tasks/                 # Gestion des tâches
 │       ├── announcements/         # Annonces + diffusion
-│       └── [autres modules vides] # Structure réservée pour futurs modules
+│       └── meetings/ decisions/ expenses/ objectives/ kpi/ alerts/
+│           audit/ roadmap/ documents/ absences/ dashboard/
 ├── .env.example
 ├── package.json
 └── tsconfig.json
@@ -93,8 +106,11 @@ npx prisma studio
 # En développement (rechargement à chaud via tsx)
 npm run dev
 
-# Build TypeScript uniquement (vérification de types)
-npm run build
+# Vérification de types seule
+npm run typecheck
+
+# Diagnostic de la connexion base de données
+npm run check:db
 
 # Production
 npm run build
@@ -135,7 +151,7 @@ Pôles :
 7. **Partenariats** — partenaires
 8. **Animation** — événements
 
-## 📝 Workflows clés (à implémenter)
+## 📝 Workflows clés
 
 ### Setup automatique (`/setup`)
 1. Crée 9 rôles hiérarchiques colorés avec permissions Discord adaptées

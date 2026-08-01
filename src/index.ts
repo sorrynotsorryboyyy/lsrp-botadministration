@@ -6,7 +6,7 @@ import EventHandler from '@core/EventHandler';
 import { registerInteractionHandlers } from '@core/InteractionHandler';
 import logger from '@core/Logger';
 import { connectDatabase, disconnectDatabase } from '@database/prisma';
-import initializeJobs from '@jobs/index';
+import initializeJobs, { stopJobs } from '@jobs/index';
 
 async function start(): Promise<void> {
   logger.info('🚀 Démarrage du bot La Scène RP...');
@@ -20,18 +20,20 @@ async function start(): Promise<void> {
   await commandHandler.loadCommands();
   await eventHandler.loadEvents();
   registerInteractionHandlers(client);
-  await initializeJobs();
 
   // Enregistré AVANT le login : `ready` peut se déclencher dès que la
   // connexion aboutit, un listener posé après risquerait de le manquer.
   client.once(Events.ClientReady, async () => {
     await commandHandler.registerCommands();
+    // Les jobs ont besoin d'un client connecté pour publier dans les salons.
+    await initializeJobs(client);
   });
 
   await client.login(env.discordToken);
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`${signal} reçu — arrêt en cours...`);
+    stopJobs();
     await client.destroy();
     await disconnectDatabase();
     process.exit(0);

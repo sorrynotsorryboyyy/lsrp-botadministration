@@ -8,6 +8,8 @@ import {
   Warning,
 } from '@prisma/client';
 import prisma from '@database/prisma';
+import { recordAudit } from '@modules/audit/services/auditService';
+import { AuditAction, AuditEntity } from '@modules/audit/actions';
 import logger from '@core/Logger';
 
 export interface SanctionInput {
@@ -64,6 +66,14 @@ export async function createSanction(input: SanctionInput): Promise<Sanction> {
 
   logger.info(`Sanction ${type}/${severity} émise contre ${target.username} par ${actor.username}`);
 
+  await recordAudit({
+    action: AuditAction.MEMBER_SANCTIONED,
+    entityType: AuditEntity.MEMBER,
+    entityId: target.id,
+    actorId: actor.id,
+    metadata: { target: target.username, type, gravite: severity, motif: reason },
+  });
+
   return sanction;
 }
 
@@ -87,6 +97,14 @@ export async function createWarning(
   });
 
   logger.info(`Avertissement émis contre ${target.username} par ${actor.username}`);
+
+  await recordAudit({
+    action: AuditAction.MEMBER_WARNED,
+    entityType: AuditEntity.MEMBER,
+    entityId: target.id,
+    actorId: actor.id,
+    metadata: { target: target.username, motif: reason },
+  });
 
   return warning;
 }

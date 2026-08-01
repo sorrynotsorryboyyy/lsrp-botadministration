@@ -7,6 +7,8 @@ import {
   ProjectStatus,
 } from '@prisma/client';
 import prisma from '@database/prisma';
+import { recordAudit } from '@modules/audit/services/auditService';
+import { AuditAction, AuditEntity } from '@modules/audit/actions';
 import logger from '@core/Logger';
 import { canTransitionProject, PROJECT_STATUS_LABELS } from '../workflow';
 
@@ -54,6 +56,14 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectW
   });
 
   logger.info(`Projet créé : "${project.title}" (${project.id}) par ${input.manager.username}`);
+
+  await recordAudit({
+    action: AuditAction.PROJECT_CREATED,
+    entityType: AuditEntity.PROJECT,
+    entityId: project.id,
+    actorId: input.manager.id,
+    metadata: { titre: project.title, priorite: project.priority, pole: input.pole },
+  });
 
   return project;
 }
@@ -118,8 +128,8 @@ export async function updateProjectStatus(
       },
       include: WITH_RELATIONS,
     }),
-    // Commentaire système : trace le changement dans le fil du projet sans
-    // dépendre du module d'audit, non encore implémenté.
+    // Commentaire système : rend le changement visible dans le fil du projet.
+    // Complémentaire du journal d'audit, qui lui sert à la recherche transverse.
     prisma.projectComment.create({
       data: {
         projectId,
@@ -130,6 +140,14 @@ export async function updateProjectStatus(
   ]);
 
   logger.info(`Projet "${project.title}" : ${current.status} → ${newStatus} (${actor.username})`);
+
+  await recordAudit({
+    action: AuditAction.PROJECT_STATUS_CHANGED,
+    entityType: AuditEntity.PROJECT,
+    entityId: project.id,
+    actorId: actor.id,
+    metadata: { target: project.title, from: current.status, to: newStatus },
+  });
 
   return { project, previousStatus: current.status };
 }

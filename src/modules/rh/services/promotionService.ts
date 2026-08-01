@@ -3,6 +3,8 @@ import { Grade, Member, MemberHistoryEventType, PoleName } from '@prisma/client'
 import prisma from '@database/prisma';
 import GuildStructureService from '@services/GuildStructureService';
 import { getGradeLevel } from '@apptypes/grade.types';
+import { recordAudit } from '@modules/audit/services/auditService';
+import { AuditAction, AuditEntity } from '@modules/audit/actions';
 import logger from '@core/Logger';
 
 export interface GradeChangeInput {
@@ -58,6 +60,16 @@ export async function applyGradeChange(input: GradeChangeInput): Promise<boolean
   logger.info(
     `Grade modifié : ${target.username} ${previousGrade} → ${newGrade} (par ${actor.username})`,
   );
+
+  await recordAudit({
+    action: isGradeUpgrade(previousGrade, newGrade)
+      ? AuditAction.MEMBER_PROMOTED
+      : AuditAction.MEMBER_DEMOTED,
+    entityType: AuditEntity.MEMBER,
+    entityId: target.id,
+    actorId: actor.id,
+    metadata: { target: target.username, from: previousGrade, to: newGrade, motif: reason },
+  });
 
   return syncGradeRoles(targetMember, previousGrade, newGrade);
 }
@@ -136,6 +148,19 @@ export async function applyPoleTransfer(
   logger.info(
     `Pôle modifié : ${target.username} ${previousPole?.displayName ?? 'aucun'} → ${pole.displayName}`,
   );
+
+  await recordAudit({
+    action: AuditAction.MEMBER_POLE_CHANGED,
+    entityType: AuditEntity.MEMBER,
+    entityId: target.id,
+    actorId: actor.id,
+    metadata: {
+      target: target.username,
+      from: previousPole?.displayName ?? 'aucun',
+      to: pole.displayName,
+      motif: reason,
+    },
+  });
 }
 
 /** Vrai si `next` est hiérarchiquement supérieur à `previous`. */

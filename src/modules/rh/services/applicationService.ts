@@ -9,6 +9,8 @@ import {
   RecruitmentApplication,
 } from '@prisma/client';
 import prisma from '@database/prisma';
+import { recordAudit } from '@modules/audit/services/auditService';
+import { AuditAction, AuditEntity } from '@modules/audit/actions';
 import logger from '@core/Logger';
 
 /** Candidature accompagnée de ses relations, telle qu'affichée dans les embeds. */
@@ -60,6 +62,14 @@ export async function createApplication(
   });
 
   logger.info(`Candidature créée : ${input.candidatePseudo} (${input.type})`);
+
+  await recordAudit({
+    action: AuditAction.APPLICATION_CREATED,
+    entityType: AuditEntity.APPLICATION,
+    entityId: application.id,
+    actorId: input.candidateId,
+    metadata: { candidat: input.candidatePseudo, type: input.type, pole: input.targetPole },
+  });
 
   return application;
 }
@@ -149,6 +159,14 @@ export async function acceptApplication(
 
   logger.info(`Candidature acceptée : ${application.candidatePseudo} (par ${reviewer.username})`);
 
+  await recordAudit({
+    action: AuditAction.APPLICATION_ACCEPTED,
+    entityType: AuditEntity.APPLICATION,
+    entityId: application.id,
+    actorId: reviewer.id,
+    metadata: { target: application.candidatePseudo, note },
+  });
+
   return { application: updated, createdMember };
 }
 
@@ -174,6 +192,14 @@ export async function rejectApplication(
   });
 
   logger.info(`Candidature refusée : ${application.candidatePseudo} (par ${reviewer.username})`);
+
+  await recordAudit({
+    action: AuditAction.APPLICATION_REJECTED,
+    entityType: AuditEntity.APPLICATION,
+    entityId: application.id,
+    actorId: reviewer.id,
+    metadata: { target: application.candidatePseudo, note },
+  });
 
   return updated;
 }

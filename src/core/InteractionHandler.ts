@@ -12,6 +12,12 @@ import {
 } from '@modules/projects/interactions';
 import { taskButtons, taskCommentModal, taskStatusSelect } from '@modules/tasks/interactions';
 import { announcementPoleSelect } from '@modules/announcements/interactions';
+import {
+  decisionButtons,
+  meetingButtons,
+  meetingSummaryModal,
+} from '@modules/meetings/interactions';
+import { expenseButtons, expenseRefusalModal } from '@modules/expenses/interactions';
 
 /**
  * Enregistre les handlers d'interactions non-slash (boutons, select menus, modals).
@@ -22,13 +28,26 @@ import { announcementPoleSelect } from '@modules/announcements/interactions';
  * serait bien plus difficile à diagnostiquer qu'un import oublié ici.
  */
 export function registerInteractionHandlers(client: ExtendedClient): void {
-  const buttons: ButtonHandler[] = [applicationDecisionButton, projectButtons, taskButtons];
+  const buttons: ButtonHandler[] = [
+    applicationDecisionButton,
+    projectButtons,
+    taskButtons,
+    meetingButtons,
+    decisionButtons,
+    expenseButtons,
+  ];
   const selectMenus: SelectMenuHandler[] = [
     projectStatusSelect,
     taskStatusSelect,
     announcementPoleSelect,
   ];
-  const modals: ModalHandler[] = [applicationDecisionModal, projectCommentModal, taskCommentModal];
+  const modals: ModalHandler[] = [
+    applicationDecisionModal,
+    projectCommentModal,
+    taskCommentModal,
+    meetingSummaryModal,
+    expenseRefusalModal,
+  ];
 
   for (const handler of buttons) {
     assertFree(client.buttons, handler.customIdPrefix, 'bouton');

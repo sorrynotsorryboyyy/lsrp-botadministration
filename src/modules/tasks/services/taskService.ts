@@ -1,5 +1,7 @@
 import { Member, Priority, Prisma, Task, TaskStatus } from '@prisma/client';
 import prisma from '@database/prisma';
+import { recordAudit } from '@modules/audit/services/auditService';
+import { AuditAction, AuditEntity } from '@modules/audit/actions';
 import logger from '@core/Logger';
 import { canTransitionTask, TASK_STATUS_LABELS } from '@modules/projects/workflow';
 
@@ -52,6 +54,14 @@ export async function createTask(input: CreateTaskInput): Promise<TaskWithRelati
 
   logger.info(`Tâche créée : "${task.title}" (${task.id}) par ${input.creator.username}`);
 
+  await recordAudit({
+    action: AuditAction.TASK_CREATED,
+    entityType: AuditEntity.TASK,
+    entityId: task.id,
+    actorId: input.creator.id,
+    metadata: { titre: task.title, priorite: task.priority, projet: task.project?.title },
+  });
+
   return task;
 }
 
@@ -88,6 +98,14 @@ export async function assignTask(taskId: string, assignee: Member | null): Promi
   });
 
   logger.info(`Tâche "${updated.title}" assignée à ${assignee?.username ?? 'personne'}`);
+
+  await recordAudit({
+    action: AuditAction.TASK_ASSIGNED,
+    entityType: AuditEntity.TASK,
+    entityId: taskId,
+    actorId: assignee?.id,
+    metadata: { target: updated.title, assigne: assignee?.username ?? 'personne' },
+  });
 
   return updated;
 }
@@ -126,6 +144,13 @@ export async function updateTaskStatus(
   });
 
   logger.info(`Tâche "${task.title}" : ${current.status} → ${newStatus}`);
+
+  await recordAudit({
+    action: AuditAction.TASK_STATUS_CHANGED,
+    entityType: AuditEntity.TASK,
+    entityId: taskId,
+    metadata: { target: task.title, from: current.status, to: newStatus },
+  });
 
   return { task, previousStatus: current.status };
 }

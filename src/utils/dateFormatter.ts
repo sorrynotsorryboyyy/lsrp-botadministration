@@ -41,6 +41,36 @@ export function parseDueDate(input: string): Date | null {
   return isConsistent ? date : null;
 }
 
+/**
+ * Analyse une date-heure au format `JJ/MM/AAAA HH:MM`.
+ *
+ * L'heure est optionnelle et vaut minuit par défaut. Comme `parseDueDate`, la
+ * cohérence des composants est vérifiée pour rejeter le 31/02 plutôt que de le
+ * laisser glisser au 3 mars.
+ */
+export function parseDateTime(input: string): Date | null {
+  const match = input.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const hours = match[4] ? Number(match[4]) : 0;
+  const minutes = match[5] ? Number(match[5]) : 0;
+
+  if (hours > 23 || minutes > 59) return null;
+
+  const date = new Date(year, month - 1, day, hours, minutes);
+
+  const isConsistent =
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day &&
+    date.getHours() === hours;
+
+  return isConsistent ? date : null;
+}
+
 export function formatDuration(start: Date, end: Date): string {
   const diffMs = end.getTime() - start.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
