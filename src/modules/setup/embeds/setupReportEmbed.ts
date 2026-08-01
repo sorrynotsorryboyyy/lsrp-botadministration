@@ -27,6 +27,7 @@ export function buildSetupReportEmbed(report: SetupReport, author: User): EmbedB
       { name: 'Catégories', value: summarize(report.categories), inline: true },
       { name: 'Pôles', value: summarize(report.poles), inline: true },
       { name: 'Salons', value: summarize(report.channels), inline: false },
+      { name: 'Panneaux', value: summarize(report.panels), inline: false },
     )
     .setFooter({
       text: `Exécuté par ${author.username} • ${(report.durationMs / 1000).toFixed(1)}s`,
@@ -60,9 +61,13 @@ function summarize(results: ProvisionResult[]): string {
 }
 
 function formatErrors(report: SetupReport): string {
-  const errors = [...report.roles, ...report.categories, ...report.poles, ...report.channels].filter(
-    (r) => r.action === 'failed',
-  );
+  const errors = [
+    ...report.roles,
+    ...report.categories,
+    ...report.poles,
+    ...report.channels,
+    ...report.panels,
+  ].filter((r) => r.action === 'failed');
 
   const shown = errors
     .slice(0, MAX_ERRORS_SHOWN)

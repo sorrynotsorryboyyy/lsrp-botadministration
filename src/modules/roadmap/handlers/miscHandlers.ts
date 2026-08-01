@@ -254,7 +254,7 @@ export async function handleAbsence(interaction: ChatInputCommandInteraction): P
         reason: interaction.options.getString('raison') ?? undefined,
       });
 
-      const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_HISTORIQUE');
+      const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_HUB');
       await channel?.send({ embeds: [buildAbsenceEmbed(absence)] });
 
       await interaction.editReply({

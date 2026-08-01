@@ -32,6 +32,17 @@ export class GuildStructureService {
     return `POLE_${pole}_${channelKey.toUpperCase()}`;
   }
 
+  /**
+   * Clé du message épinglé d'un panneau.
+   *
+   * Stocké ici plutôt que dans une table dédiée : c'est un identifiant Discord
+   * volatil, de même nature et de même cycle de vie que les IDs de salons — et
+   * l'y placer garantit qu'un `/reset` le purge sans oubli.
+   */
+  static panelMessageKey(panelId: string, pole: PoleName | null): string {
+    return pole ? `PANEL_${panelId}_${pole}_MESSAGE` : `PANEL_${panelId}_MESSAGE`;
+  }
+
   // --- Accès générique ---
 
   /** Écrit (ou met à jour) une entrée du registre. */
@@ -91,6 +102,18 @@ export class GuildStructureService {
 
   static async getPoleChannelId(pole: PoleName, channelKey: string): Promise<string | null> {
     return this.get(this.poleChannelKey(pole, channelKey));
+  }
+
+  static async setPanelMessageId(
+    panelId: string,
+    pole: PoleName | null,
+    messageId: string,
+  ): Promise<void> {
+    await this.set(this.panelMessageKey(panelId, pole), messageId);
+  }
+
+  static async getPanelMessageId(panelId: string, pole: PoleName | null): Promise<string | null> {
+    return this.get(this.panelMessageKey(panelId, pole));
   }
 
   /**

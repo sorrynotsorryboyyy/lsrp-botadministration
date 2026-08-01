@@ -1,6 +1,11 @@
 import { CategoryChannel, ChannelType, Guild, GuildBasedChannel } from 'discord.js';
 import { PoleName } from '@prisma/client';
-import { GUILD_STRUCTURE, POLE_CHANNELS, ChannelConfig } from '@config/guildStructure.config';
+import {
+  GUILD_STRUCTURE,
+  POLE_CHANNELS,
+  ChannelConfig,
+  buildPoleChannelName,
+} from '@config/guildStructure.config';
 import { POLES_CONFIG } from '@config/poles.config';
 import GuildStructureService from '@services/GuildStructureService';
 import { buildChannelOverwrites, loadRoleIdMap, RoleIdMap } from '@utils/permissionOverwrites';
@@ -85,11 +90,18 @@ export async function provisionPoles(guild: Guild): Promise<ChannelProvisionOutc
       });
 
       for (const channelConfig of POLE_CHANNELS) {
+        // Le nom stocké dans POLE_CHANNELS est un modèle : le nom réel est
+        // préfixé par le slug du pôle pour éviter les homonymes entre pôles.
+        const named: ChannelConfig = {
+          ...channelConfig,
+          name: buildPoleChannelName(poleConfig.slug, channelConfig),
+        };
+
         const result = await ensureChannel(
           guild,
           roleIds,
           category.channel,
-          channelConfig,
+          named,
           GuildStructureService.poleChannelKey(poleConfig.name, channelConfig.key),
         );
         channels.push({ ...result, label: `${poleConfig.displayName} › ${result.label}` });
@@ -162,7 +174,7 @@ async function ensureChannel(
   configKey: string,
 ): Promise<ProvisionResult> {
   try {
-    const overwrites = buildChannelOverwrites(guild, roleIds, config.minGradeView, config.minGradeWrite);
+    const overwrites = buildChannelOverwrites(guild, roleIds, config);
     const existing = await findExistingChannel(guild, category, config.name, configKey);
 
     if (existing) {

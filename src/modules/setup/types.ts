@@ -14,6 +14,7 @@ export interface SetupReport {
   categories: ProvisionResult[];
   channels: ProvisionResult[];
   poles: ProvisionResult[];
+  panels: ProvisionResult[];
   /** Durée totale d'exécution en millisecondes. */
   durationMs: number;
 }
@@ -23,7 +24,11 @@ export function countByAction(results: ProvisionResult[], action: ProvisionActio
 }
 
 export function hasFailures(report: SetupReport): boolean {
-  return [...report.roles, ...report.categories, ...report.channels, ...report.poles].some(
-    (r) => r.action === 'failed',
-  );
+  return [
+    ...report.roles,
+    ...report.categories,
+    ...report.channels,
+    ...report.poles,
+    ...report.panels,
+  ].some((r) => r.action === 'failed');
 }

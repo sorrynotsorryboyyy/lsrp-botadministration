@@ -7,6 +7,10 @@ import { detectAlerts, persistAlerts } from '@modules/alerts/services/alertServi
 import { snapshotWeek } from '@modules/kpi/services/kpiService';
 import { closeExpiredAbsences } from '@modules/absences/services/absenceService';
 import {
+  cancelPendingRefreshes,
+  refreshAllPanels,
+} from '@modules/panels/services/panelRefreshService';
+import {
   buildAlertsEmbed,
   buildKpiEmbed,
 } from '@modules/objectives/embeds/objectiveEmbeds';
@@ -43,6 +47,12 @@ export async function initializeJobs(client: Client): Promise<void> {
         const detected = await detectAlerts();
         await persistAlerts(detected);
 
+        const refreshGuild = client.guilds.cache.get(env.guildId);
+        // Certains compteurs dérivent sans action utilisateur : une tâche
+        // devient « en retard » par simple écoulement du temps. Sans ce
+        // passage régulier, les panneaux afficheraient des chiffres périmés.
+        if (refreshGuild) await refreshAllPanels(refreshGuild);
+
         // Les alertes critiques sont poussées dans le salon de direction ;
         // les autres restent consultables via `/alertes`.
         const critical = detected.filter((alert) => alert.severity === 'CRITIQUE');
@@ -51,7 +61,7 @@ export async function initializeJobs(client: Client): Promise<void> {
         const guild = client.guilds.cache.get(env.guildId);
         if (!guild) return;
 
-        const channel = await ChannelResolver.getChannel(guild, 'DIRECTION_DASHBOARD');
+        const channel = await ChannelResolver.getChannel(guild, 'SYSTEME_JOURNAL');
         await channel?.send({
           embeds: [buildAlertsEmbed(critical, client.user!)],
         });
@@ -75,7 +85,7 @@ export async function initializeJobs(client: Client): Promise<void> {
         const guild = client.guilds.cache.get(env.guildId);
         if (!guild) return;
 
-        const channel = await ChannelResolver.getChannel(guild, 'DIRECTION_STATISTIQUES');
+        const channel = await ChannelResolver.getChannel(guild, 'DIRECTION_HUB');
         await channel?.send({
           embeds: [buildKpiEmbed(await getWeeklyComparison(), client.user!)],
         });
@@ -93,6 +103,7 @@ export function stopJobs(): void {
     task.stop();
   }
   tasks.length = 0;
+  cancelPendingRefreshes();
 }
 
 async function runSafely(label: string, action: () => Promise<void>): Promise<void> {

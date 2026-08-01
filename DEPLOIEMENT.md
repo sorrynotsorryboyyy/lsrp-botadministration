@@ -207,6 +207,48 @@ pôle, et robustesse face à un salon manquant.
 
 ---
 
+## 6 quater. Migration vers la nouvelle structure
+
+Si votre serveur utilise l'ancienne structure (64 salons), il faut repartir
+d'une base propre — les deux organisations ne peuvent pas coexister.
+
+```
+/reset     → embed rouge listant ce qui sera détruit
+           → bouton « Je comprends, continuer »
+           → modal : recopier le nom exact du serveur
+           → suppression + rapport
+
+/setup     → recrée 24 salons, 13 catégories, 9 rôles
+           → publie les 13 panneaux épinglés
+```
+
+**Ce qui est conservé** : membres, grades, projets, tâches, historique RH,
+journal d'audit — toutes les données métier restent en base. Seuls les salons et
+rôles Discord sont recréés.
+
+**Ce qui est perdu** : le contenu des messages dans les salons supprimés
+(comptes-rendus rédigés à la main, discussions). Les fiches générées par le bot
+sont régénérables depuis la base.
+
+### Tester les panneaux
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 1 | Aller dans `#web` | Panneau épinglé avec compteurs et 6 boutons |
+| 2 | Cliquer **Nouveau projet** | Modal avec titre, description, priorité, échéance |
+| 3 | Valider | Fiche projet postée sous le panneau |
+| 4 | Recharger `#web` | Compteur « Projets actifs » incrémenté |
+| 5 | Essayer d'écrire dans `#web` | ❌ Impossible (sauf Fondateur — voir README) |
+| 6 | Écrire dans `#web-discussion` | ✅ Autorisé |
+| 7 | Supprimer le panneau épinglé à la main | Il se recrée à la prochaine action ou au cron |
+| 8 | Cliquer **Mes tâches** | Liste éphémère, visible de vous seul |
+| 9 | `/journal` | Les actions faites via les panneaux y figurent |
+
+Le point 7 vérifie l'auto-réparation, le point 9 que les panneaux et les
+commandes alimentent le même journal d'audit.
+
+---
+
 ## 7. Déployer en production sur Railway
 
 1. Dans votre projet Railway : **New** → **GitHub Repo** → sélectionnez votre dépôt.

@@ -5,10 +5,13 @@ export interface ChannelConfig {
   /**
    * Nom du salon tel qu'il sera créé sur Discord.
    *
-   * IMPORTANT : toujours en kebab-case sans accent. Discord normalise lui-même
-   * les noms de salons textuels (minuscules, espaces → tirets) mais conserve les
-   * accents ; écrire le nom déjà normalisé garantit que la recherche
-   * d'idempotence au second `/setup` retrouve bien le salon existant.
+   * Toujours en kebab-case sans accent : Discord normalise lui-même les noms de
+   * salons textuels mais conserve les accents ; écrire le nom déjà normalisé
+   * garantit que la recherche d'idempotence au second `/setup` retrouve bien le
+   * salon existant.
+   *
+   * Pour les salons de pôle, ce nom est un suffixe préfixé par le slug du pôle
+   * (voir `provisionPoles`).
    */
   name: string;
   /** Clé stable utilisée dans `GuildConfig` — ne jamais la renommer après un déploiement. */
@@ -16,6 +19,14 @@ export interface ChannelConfig {
   type: ChannelType;
   minGradeView?: Grade;
   minGradeWrite?: Grade;
+  /**
+   * Salon « hub » : seul le bot y écrit.
+   *
+   * Impossible à exprimer avec `minGradeWrite`, qui autoriserait toujours le
+   * grade le plus élevé. Voir `buildChannelOverwrites` pour la limite liée à la
+   * permission Administrator.
+   */
+  botOnlyWrite?: boolean;
   topic?: string;
 }
 
@@ -26,50 +37,34 @@ export interface CategoryConfig {
   channels: ChannelConfig[];
 }
 
+/**
+ * Structure fixe du serveur — 5 catégories, 8 salons.
+ *
+ * Chaque domaine tient en un salon « hub » verrouillé, portant un panneau
+ * interactif, éventuellement doublé d'un salon de discussion ouvert. Les salons
+ * thématiques d'antan (annonces, projets, tâches, objectifs…) sont remplacés par
+ * les boutons du panneau et les fiches qu'il publie.
+ */
 export const GUILD_STRUCTURE: CategoryConfig[] = [
   {
     name: '📋 Direction',
     key: 'DIRECTION',
     channels: [
       {
-        name: 'annonces-direction',
-        key: 'DIRECTION_ANNONCES',
-        type: ChannelType.GuildText,
-        minGradeView: Grade.DIRECTEUR_POLE,
-        minGradeWrite: Grade.DIRECTEUR_GENERAL,
-        topic: 'Annonces réservées à la direction',
-      },
-      {
-        name: 'dashboard',
-        key: 'DIRECTION_DASHBOARD',
+        name: 'direction',
+        key: 'DIRECTION_HUB',
         type: ChannelType.GuildText,
         minGradeView: Grade.RESPONSABLE,
-        minGradeWrite: Grade.FONDATEUR,
-        topic: 'Tableau de bord administratif — publié par le bot',
+        botOnlyWrite: true,
+        topic: 'Pilotage : tableau de bord, dépenses, décisions',
       },
       {
-        name: 'statistiques',
-        key: 'DIRECTION_STATISTIQUES',
-        type: ChannelType.GuildText,
-        minGradeView: Grade.DIRECTEUR_POLE,
-        minGradeWrite: Grade.FONDATEUR,
-        topic: 'KPI et statistiques hebdomadaires — publié par le bot',
-      },
-      {
-        name: 'depenses',
-        key: 'DIRECTION_DEPENSES',
+        name: 'direction-discussion',
+        key: 'DIRECTION_DISCUSSION',
         type: ChannelType.GuildText,
         minGradeView: Grade.RESPONSABLE,
-        minGradeWrite: Grade.COLLABORATEUR,
-        topic: 'Soumission et validation des dépenses',
-      },
-      {
-        name: 'decisions',
-        key: 'DIRECTION_DECISIONS',
-        type: ChannelType.GuildText,
-        minGradeView: Grade.DIRECTEUR_POLE,
-        minGradeWrite: Grade.DIRECTEUR_GENERAL,
-        topic: 'Décisions structurantes',
+        minGradeWrite: Grade.RESPONSABLE,
+        topic: 'Échanges de la direction',
       },
     ],
   },
@@ -78,34 +73,17 @@ export const GUILD_STRUCTURE: CategoryConfig[] = [
     key: 'GENERAL',
     channels: [
       {
-        name: 'annonces',
-        key: 'GENERAL_ANNONCES',
+        name: 'general',
+        key: 'GENERAL_HUB',
         type: ChannelType.GuildText,
-        minGradeWrite: Grade.CHEF_EQUIPE,
-        topic: 'Annonces transverses à toute l\'équipe',
-      },
-      { name: 'discussion', key: 'GENERAL_DISCUSSION', type: ChannelType.GuildText },
-      {
-        name: 'reunions',
-        key: 'GENERAL_REUNIONS',
-        type: ChannelType.GuildText,
-        minGradeView: Grade.CHEF_EQUIPE,
-        minGradeWrite: Grade.RESPONSABLE,
-        topic: 'Planification des réunions',
+        botOnlyWrite: true,
+        topic: 'Annonces, réunions et objectifs généraux',
       },
       {
-        name: 'comptes-rendus',
-        key: 'GENERAL_COMPTES_RENDUS',
+        name: 'general-discussion',
+        key: 'GENERAL_DISCUSSION',
         type: ChannelType.GuildText,
-        minGradeWrite: Grade.RESPONSABLE,
-        topic: 'Comptes-rendus de réunion',
-      },
-      {
-        name: 'objectifs',
-        key: 'GENERAL_OBJECTIFS',
-        type: ChannelType.GuildText,
-        minGradeWrite: Grade.CHEF_EQUIPE,
-        topic: 'Objectifs généraux et hebdomadaires',
+        topic: "Discussion ouverte à toute l'équipe",
       },
     ],
   },
@@ -114,41 +92,22 @@ export const GUILD_STRUCTURE: CategoryConfig[] = [
     key: 'RH',
     channels: [
       {
-        name: 'recrutements',
-        key: 'RH_RECRUTEMENTS',
+        name: 'rh',
+        key: 'RH_HUB',
         type: ChannelType.GuildText,
         minGradeView: Grade.CHEF_EQUIPE,
-        topic: 'Suivi des recrutements externes',
+        botOnlyWrite: true,
+        topic: 'Candidatures, promotions et absences',
       },
       {
-        name: 'candidatures',
-        key: 'RH_CANDIDATURES',
-        type: ChannelType.GuildText,
-        minGradeView: Grade.CHEF_EQUIPE,
-        topic: 'Candidatures en attente de décision',
-      },
-      {
-        name: 'promotions',
-        key: 'RH_PROMOTIONS',
-        type: ChannelType.GuildText,
-        minGradeWrite: Grade.DIRECTEUR_POLE,
-        topic: 'Annonces de promotion',
-      },
-      {
-        name: 'sanctions',
-        key: 'RH_SANCTIONS',
+        // Salon distinct et non fusionné avec le hub : les sanctions sont
+        // visibles à partir de Responsable, les candidatures dès Chef d'équipe.
+        name: 'rh-confidentiel',
+        key: 'RH_CONFIDENTIEL',
         type: ChannelType.GuildText,
         minGradeView: Grade.RESPONSABLE,
         minGradeWrite: Grade.RESPONSABLE,
-        topic: 'Confidentiel — sanctions et avertissements internes',
-      },
-      {
-        name: 'historique',
-        key: 'RH_HISTORIQUE',
-        type: ChannelType.GuildText,
-        minGradeView: Grade.CHEF_EQUIPE,
-        minGradeWrite: Grade.FONDATEUR,
-        topic: 'Historique RH — publié par le bot',
+        topic: 'Confidentiel — sanctions et avertissements',
       },
     ],
   },
@@ -157,91 +116,56 @@ export const GUILD_STRUCTURE: CategoryConfig[] = [
     key: 'DOCUMENTS',
     channels: [
       {
-        name: 'procedures',
-        key: 'DOCUMENTS_PROCEDURES',
+        name: 'documents',
+        key: 'DOCUMENTS_HUB',
         type: ChannelType.GuildText,
-        minGradeWrite: Grade.RESPONSABLE,
-      },
-      {
-        name: 'tutoriels',
-        key: 'DOCUMENTS_TUTORIELS',
-        type: ChannelType.GuildText,
-        minGradeWrite: Grade.CHEF_EQUIPE,
-      },
-      {
-        name: 'guides',
-        key: 'DOCUMENTS_GUIDES',
-        type: ChannelType.GuildText,
-        minGradeWrite: Grade.CHEF_EQUIPE,
-      },
-      {
-        name: 'cahiers-des-charges',
-        key: 'DOCUMENTS_CAHIERS_DES_CHARGES',
-        type: ChannelType.GuildText,
-        minGradeView: Grade.CHEF_EQUIPE,
-        minGradeWrite: Grade.RESPONSABLE,
+        botOnlyWrite: true,
+        topic: 'Procédures, guides, tutoriels et cahiers des charges',
       },
     ],
   },
   {
-    name: '🗄️ Archives',
-    key: 'ARCHIVES',
+    name: '⚙️ Système',
+    key: 'SYSTEME',
     channels: [
       {
-        name: 'projets-termines',
-        key: 'ARCHIVES_PROJETS',
-        type: ChannelType.GuildText,
-        minGradeWrite: Grade.FONDATEUR,
-        topic: 'Archive automatique — projets clôturés',
-      },
-      {
-        name: 'comptes-rendus',
-        key: 'ARCHIVES_COMPTES_RENDUS',
-        type: ChannelType.GuildText,
-        minGradeWrite: Grade.FONDATEUR,
-        topic: 'Archive automatique — anciens comptes-rendus',
-      },
-      {
-        name: 'decisions',
-        key: 'ARCHIVES_DECISIONS',
+        name: 'journal',
+        key: 'SYSTEME_JOURNAL',
         type: ChannelType.GuildText,
         minGradeView: Grade.DIRECTEUR_POLE,
-        minGradeWrite: Grade.FONDATEUR,
-        topic: 'Archive automatique — anciennes décisions',
-      },
-      {
-        name: 'anciennes-annonces',
-        key: 'ARCHIVES_ANNONCES',
-        type: ChannelType.GuildText,
-        minGradeWrite: Grade.FONDATEUR,
-        topic: 'Archive automatique — anciennes annonces',
+        botOnlyWrite: true,
+        topic: "Journal d'audit et alertes automatiques",
       },
     ],
   },
 ];
 
 /**
- * Structure de salons répliquée à l'identique dans chaque pôle.
+ * Salons répliqués dans chaque pôle — 2 par pôle.
  *
- * Les clés sont relatives au pôle : `GuildStructureService.setPoleChannelId`
- * les préfixe par `POLE_<NOM_DU_POLE>_`.
+ * Les noms sont préfixés par le slug du pôle à la création (`web` → `#web`,
+ * `#web-discussion`), afin que les mentions restent sans ambiguïté d'un pôle à
+ * l'autre. Les clés sont relatives : `GuildStructureService.poleChannelKey` les
+ * préfixe par `POLE_<NOM>_`.
  */
 export const POLE_CHANNELS: ChannelConfig[] = [
   {
-    name: 'annonces',
-    key: 'ANNONCES',
+    // Nom vide : le salon prend le slug du pôle tel quel (`#web`).
+    name: '',
+    key: 'HUB',
     type: ChannelType.GuildText,
-    minGradeWrite: Grade.CHEF_EQUIPE,
-    topic: 'Annonces du pôle',
+    botOnlyWrite: true,
+    topic: 'Panneau du pôle — projets, tâches, objectifs, annonces',
   },
-  { name: 'discussion', key: 'DISCUSSION', type: ChannelType.GuildText },
-  { name: 'projets', key: 'PROJETS', type: ChannelType.GuildText, topic: 'Projets en cours du pôle' },
-  { name: 'taches', key: 'TACHES', type: ChannelType.GuildText, topic: 'Tâches assignées du pôle' },
   {
-    name: 'objectifs',
-    key: 'OBJECTIFS',
+    name: 'discussion',
+    key: 'DISCUSSION',
     type: ChannelType.GuildText,
-    minGradeWrite: Grade.CHEF_EQUIPE,
-    topic: 'Objectifs du pôle',
+    topic: 'Échanges du pôle',
   },
 ];
+
+/** Compose le nom réel d'un salon de pôle à partir du slug et du modèle. */
+export function buildPoleChannelName(slug: string, config: ChannelConfig): string {
+  return config.name ? `${slug}-${config.name}` : slug;
+}

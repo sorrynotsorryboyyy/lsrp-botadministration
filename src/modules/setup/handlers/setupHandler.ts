@@ -11,6 +11,7 @@ import EmbedFactory from '@services/EmbedFactory';
 import logger from '@core/Logger';
 import { provisionRoles } from '../services/roleProvisioningService';
 import { provisionCoreStructure, provisionPoles } from '../services/channelProvisioningService';
+import { provisionPanels } from '../services/panelProvisioningService';
 import { buildSetupConfirmEmbed, buildSetupReportEmbed } from '../embeds/setupReportEmbed';
 import { SetupReport } from '../types';
 
@@ -124,11 +125,15 @@ async function runProvisioning(guild: ChatInputCommandInteraction['guild']): Pro
   const core = await provisionCoreStructure(guild!);
   const polesOutcome = await provisionPoles(guild!);
 
+  // Les panneaux viennent en dernier : ils ont besoin des salons.
+  const panels = await provisionPanels(guild!);
+
   const report: SetupReport = {
     roles,
     categories: core.categories,
     channels: [...core.channels, ...polesOutcome.channels],
     poles: polesOutcome.poles,
+    panels,
     durationMs: Date.now() - startedAt,
   };
 

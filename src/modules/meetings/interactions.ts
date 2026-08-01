@@ -101,7 +101,7 @@ export const meetingSummaryModal: ModalHandler = {
         components: [],
       });
 
-      const channel = await ChannelResolver.getChannel(interaction.guild, 'GENERAL_COMPTES_RENDUS');
+      const channel = await ChannelResolver.getChannel(interaction.guild, 'GENERAL_HUB');
       await channel?.send({ embeds: [buildMeetingEmbed(meeting)] });
 
       await interaction.editReply({

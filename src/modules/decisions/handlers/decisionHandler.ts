@@ -45,7 +45,7 @@ async function handlePropose(interaction: ChatInputCommandInteraction<'cached'>)
       meetingId: interaction.options.getString('reunion') ?? undefined,
     });
 
-    const channel = await ChannelResolver.getChannel(interaction.guild, 'DIRECTION_DECISIONS');
+    const channel = await ChannelResolver.getChannel(interaction.guild, 'DIRECTION_HUB');
     await channel?.send({
       embeds: [buildDecisionEmbed(decision)],
       components: buildDecisionButtons(decision),

@@ -185,7 +185,7 @@ async function handleGradeChange(
       mode === 'promote',
     );
 
-    const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_PROMOTIONS');
+    const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_HUB');
     await channel?.send({ embeds: [embed] });
 
     await interaction.editReply({
@@ -239,7 +239,7 @@ async function handleTransfer(interaction: ChatInputCommandInteraction<'cached'>
       reason,
     );
 
-    const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_HISTORIQUE');
+    const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_HUB');
     await channel?.send({ embeds: [embed] });
 
     await interaction.editReply({
@@ -276,7 +276,7 @@ async function handleWarn(interaction: ChatInputCommandInteraction<'cached'>): P
 
     const embed = buildWarningEmbed(warning, targetContext.target, context.actor, total);
 
-    const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_SANCTIONS');
+    const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_CONFIDENTIEL');
     await channel?.send({ embeds: [embed] });
 
     await notifyMember(targetContext.targetMember, embed, 'un avertissement');
@@ -329,7 +329,7 @@ async function handleSanction(interaction: ChatInputCommandInteraction<'cached'>
 
     const embed = buildSanctionEmbed(sanction, targetContext.target, context.actor);
 
-    const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_SANCTIONS');
+    const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_CONFIDENTIEL');
     await channel?.send({ embeds: [embed] });
 
     await notifyMember(targetContext.targetMember, embed, 'une sanction');
@@ -394,7 +394,7 @@ async function publishApplication(
   interaction: ChatInputCommandInteraction<'cached'>,
   application: Awaited<ReturnType<typeof createApplication>>,
 ): Promise<TextChannel | null> {
-  const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_CANDIDATURES');
+  const channel = await ChannelResolver.getChannel(interaction.guild, 'RH_HUB');
   if (!channel) return null;
 
   await channel.send({
@@ -436,7 +436,7 @@ function buildGradeChangeSummary(rolesSynced: boolean, channel: TextChannel | nu
   );
 
   if (!channel) {
-    parts.push('Le salon `#promotions` est introuvable : exécutez `/setup`.');
+    parts.push('Le salon `#rh` est introuvable : exécutez `/setup`.');
   }
 
   return parts.join('\n');

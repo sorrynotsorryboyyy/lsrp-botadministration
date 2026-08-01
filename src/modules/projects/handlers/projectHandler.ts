@@ -87,7 +87,7 @@ async function handleCreate(interaction: ChatInputCommandInteraction<'cached'>):
     });
 
     const channel = project.pole
-      ? await ChannelResolver.getPoleChannel(interaction.guild, project.pole.name, 'PROJETS')
+      ? await ChannelResolver.getPoleChannel(interaction.guild, project.pole.name, 'HUB')
       : null;
 
     await channel?.send({

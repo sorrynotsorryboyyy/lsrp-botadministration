@@ -68,8 +68,8 @@ async function handleCreate(interaction: ChatInputCommandInteraction<'cached'>):
 
     // Un objectif de pôle va dans le salon du pôle, les autres dans le général.
     const channel = pole
-      ? await ChannelResolver.getPoleChannel(interaction.guild, pole, 'OBJECTIFS')
-      : await ChannelResolver.getChannel(interaction.guild, 'GENERAL_OBJECTIFS');
+      ? await ChannelResolver.getPoleChannel(interaction.guild, pole, 'HUB')
+      : await ChannelResolver.getChannel(interaction.guild, 'GENERAL_HUB');
 
     await channel?.send({ embeds: [buildObjectiveEmbed(objective)] });
 

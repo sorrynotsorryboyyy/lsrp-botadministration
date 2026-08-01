@@ -13,12 +13,21 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   [DocumentCategory.CAHIER_DES_CHARGES]: '📐 Cahier des charges',
 };
 
-/** Clé du salon de publication, par catégorie. */
+/**
+ * Salon de publication des documents.
+ *
+ * Toutes les catégories partagent désormais le même salon : le filtrage par
+ * catégorie se fait via `listDocuments(category)` et le bouton « Consulter » du
+ * panneau, ce qui rend inutiles quatre salons distincts.
+ */
+export const DOCUMENTS_CHANNEL_KEY = 'DOCUMENTS_HUB';
+
+/** @deprecated Conservé pour compatibilité — pointe toujours vers le hub. */
 export const CATEGORY_CHANNEL_KEYS: Record<DocumentCategory, string> = {
-  [DocumentCategory.PROCEDURE]: 'DOCUMENTS_PROCEDURES',
-  [DocumentCategory.TUTORIEL]: 'DOCUMENTS_TUTORIELS',
-  [DocumentCategory.GUIDE]: 'DOCUMENTS_GUIDES',
-  [DocumentCategory.CAHIER_DES_CHARGES]: 'DOCUMENTS_CAHIERS_DES_CHARGES',
+  [DocumentCategory.PROCEDURE]: DOCUMENTS_CHANNEL_KEY,
+  [DocumentCategory.TUTORIEL]: DOCUMENTS_CHANNEL_KEY,
+  [DocumentCategory.GUIDE]: DOCUMENTS_CHANNEL_KEY,
+  [DocumentCategory.CAHIER_DES_CHARGES]: DOCUMENTS_CHANNEL_KEY,
 };
 
 export interface CreateDocumentInput {

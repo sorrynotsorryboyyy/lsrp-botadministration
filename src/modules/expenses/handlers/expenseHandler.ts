@@ -38,7 +38,7 @@ async function handleSubmit(interaction: ChatInputCommandInteraction<'cached'>):
       submitter: context.actor,
     });
 
-    const channel = await ChannelResolver.getChannel(interaction.guild, 'DIRECTION_DEPENSES');
+    const channel = await ChannelResolver.getChannel(interaction.guild, 'DIRECTION_HUB');
     await channel?.send({
       embeds: [buildExpenseEmbed(expense)],
       components: buildExpenseButtons(expense),

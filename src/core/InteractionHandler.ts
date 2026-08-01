@@ -18,6 +18,7 @@ import {
   meetingSummaryModal,
 } from '@modules/meetings/interactions';
 import { expenseButtons, expenseRefusalModal } from '@modules/expenses/interactions';
+import { panelButtons, panelModals } from '@modules/panels/interactions';
 
 /**
  * Enregistre les handlers d'interactions non-slash (boutons, select menus, modals).
@@ -35,6 +36,7 @@ export function registerInteractionHandlers(client: ExtendedClient): void {
     meetingButtons,
     decisionButtons,
     expenseButtons,
+    panelButtons,
   ];
   const selectMenus: SelectMenuHandler[] = [
     projectStatusSelect,
@@ -47,6 +49,7 @@ export function registerInteractionHandlers(client: ExtendedClient): void {
     taskCommentModal,
     meetingSummaryModal,
     expenseRefusalModal,
+    panelModals,
   ];
 
   for (const handler of buttons) {

@@ -4,11 +4,27 @@ Un bot Discord professionnel conçu pour centraliser l'administration interne de
 
 ## 🎯 Caractéristiques
 
-### Modules opérationnels — 16 commandes
+### Interface : panneaux interactifs
+
+Le serveur s'utilise principalement par **panneaux épinglés** : chaque salon hub
+porte un message du bot avec des boutons. On clique, on saisit dans un modal, et
+le contenu s'enregistre puis s'affiche en fiche. Les commandes slash restent
+disponibles en parallèle.
+
+| Panneau | Salon | Actions |
+|---|---|---|
+| Pôle (×8) | `#<pole>` | Projet, tâche, objectif, annonce, mes tâches |
+| Direction | `#direction` | Dashboard, KPI, alertes, dépense, décision |
+| RH | `#rh` | Candidater, absence, mon dossier, candidatures |
+| Général | `#general` | Annonce, réunion, objectif, roadmap |
+| Documents | `#documents` | Publier, consulter |
+
+### Modules opérationnels — 17 commandes
 
 | Commande | Périmètre | Grade minimum |
 |---|---|---|
 | `/setup` | Structure Discord complète, idempotente | Fondateur |
+| `/reset` | Supprime toute la structure (double confirmation) | Fondateur |
 | `/rh` | Candidatures, promotions, sanctions, dossier RH | Recrue |
 | `/projet` | Création, workflow, participants, commentaires | Collaborateur |
 | `/tache` | Création, assignation, statuts, pièces jointes | Collaborateur |
@@ -30,7 +46,7 @@ Un bot Discord professionnel conçu pour centraliser l'administration interne de
 | Fréquence | Traitement |
 |---|---|
 | Quotidien, 8 h | Clôture des absences échues, réactivation des membres |
-| Toutes les 6 h | Détection d'anomalies, alertes critiques en direction |
+| Toutes les 6 h | Détection d'anomalies + rafraîchissement des panneaux |
 | Lundi, 9 h | Instantané KPI de la semaine écoulée |
 
 Tous les modules du cahier des charges initial sont implémentés :
@@ -132,24 +148,30 @@ npm start
 7. **Collaborateur** — création tâche, participation projets
 8. **Recrue** — accès limité (onboarding + candidatures internes)
 
-### Pôles
+### Structure du serveur — 24 salons
 
-8 pôles opérationnels, chacun avec la même structure de salons :
-- 📢 Annonces
-- 💬 Discussion
-- 🔧 Projets
-- 📋 Tâches
-- 🎯 Objectifs
+**Catégories fixes (8 salons)**
 
-Pôles :
-1. **Général** — communications transversales
-2. **Garry's Mod** — GM
-3. **Web** — développement web
-4. **Technique** — infrastructure/support
-5. **Communautaire** — gestion communauté
-6. **Marketing** — stratégie/promotion
-7. **Partenariats** — partenaires
-8. **Animation** — événements
+| Catégorie | Salons |
+|---|---|
+| 📋 Direction | `direction` 🔒 · `direction-discussion` |
+| 📢 Général | `general` 🔒 · `general-discussion` |
+| 🧑‍💼 RH | `rh` 🔒 · `rh-confidentiel` |
+| 📚 Documents | `documents` 🔒 |
+| ⚙️ Système | `journal` 🔒 |
+
+**8 pôles × 2 salons** : `#<pole>` (hub 🔒) et `#<pole>-discussion`.
+
+Pôles : Général, Garry's Mod, Web, Technique, Communautaire, Marketing,
+Partenariats, Animation.
+
+🔒 = salon verrouillé, seul le bot y écrit. Les échanges se font dans les salons
+`-discussion`.
+
+> ⚠️ Limite Discord : les rôles portant `Administrator` (Fondateur,
+> Co-Fondateur) ignorent les refus d'écriture et pourront techniquement écrire
+> dans un salon verrouillé. Le bot compense en repositionnant le panneau en bas
+> du salon s'il n'est plus le dernier message.
 
 ## 📝 Workflows clés
 

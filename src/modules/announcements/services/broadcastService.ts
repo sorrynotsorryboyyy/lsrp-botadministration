@@ -34,7 +34,7 @@ export async function broadcastAnnouncement(
     const poleDisplayName = target.pole.displayName;
 
     try {
-      const channel = await ChannelResolver.getPoleChannel(guild, target.pole.name, 'ANNONCES');
+      const channel = await ChannelResolver.getPoleChannel(guild, target.pole.name, 'HUB');
 
       if (!channel) {
         results.push({

@@ -73,7 +73,7 @@ async function handleSchedule(interaction: ChatInputCommandInteraction<'cached'>
       attendeeIds,
     });
 
-    const channel = await ChannelResolver.getChannel(interaction.guild, 'GENERAL_REUNIONS');
+    const channel = await ChannelResolver.getChannel(interaction.guild, 'GENERAL_HUB');
     await channel?.send({
       embeds: [buildMeetingEmbed(meeting)],
       components: buildMeetingButtons(meeting),
@@ -133,7 +133,7 @@ async function handleClose(interaction: ChatInputCommandInteraction<'cached'>): 
       actor: context.actor,
     });
 
-    const channel = await ChannelResolver.getChannel(interaction.guild, 'GENERAL_COMPTES_RENDUS');
+    const channel = await ChannelResolver.getChannel(interaction.guild, 'GENERAL_HUB');
     await channel?.send({ embeds: [buildMeetingEmbed(meeting)] });
 
     await interaction.editReply({

@@ -258,7 +258,7 @@ async function resolveTaskChannel(
   const project = await getProject(projectId);
   if (!project?.pole) return null;
 
-  return ChannelResolver.getPoleChannel(interaction.guild, project.pole.name, 'TACHES');
+  return ChannelResolver.getPoleChannel(interaction.guild, project.pole.name, 'HUB');
 }
 
 async function requireTask(id: string) {
