@@ -10,6 +10,7 @@ import {
 import EmbedFactory from '@services/EmbedFactory';
 import logger from '@core/Logger';
 import { provisionRoles } from '../services/roleProvisioningService';
+import { provisionPoleRoles } from '../services/poleRoleProvisioningService';
 import { provisionCoreStructure, provisionPoles } from '../services/channelProvisioningService';
 import { provisionPanels } from '../services/panelProvisioningService';
 import { buildSetupConfirmEmbed, buildSetupReportEmbed } from '../embeds/setupReportEmbed';
@@ -118,6 +119,10 @@ async function runProvisioning(guild: ChatInputCommandInteraction['guild']): Pro
 
   const roles = await provisionRoles(guild!);
 
+  // Les rôles de pôle doivent exister avant les salons : les overwrites de
+  // cloisonnement référencent leurs IDs.
+  const poleRoles = await provisionPoleRoles(guild!);
+
   // Le cache des rôles vient d'être modifié : on le rafraîchit pour que la
   // construction des overwrites voie bien les rôles fraîchement créés.
   await guild!.roles.fetch();
@@ -129,7 +134,7 @@ async function runProvisioning(guild: ChatInputCommandInteraction['guild']): Pro
   const panels = await provisionPanels(guild!);
 
   const report: SetupReport = {
-    roles,
+    roles: [...roles, ...poleRoles],
     categories: core.categories,
     channels: [...core.channels, ...polesOutcome.channels],
     poles: polesOutcome.poles,

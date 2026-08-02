@@ -25,6 +25,7 @@ export const PanelId = {
   RH: 'rh',
   GENERAL: 'general',
   DOCUMENTS: 'documents',
+  ATTENTE: 'attente',
 } as const;
 
 const LIST_LIMIT = 5;
@@ -293,7 +294,53 @@ const documentsPanel: PanelDefinition = {
   },
 };
 
+/** Panneau du salon d'attente : accueil et affectation des nouveaux arrivants. */
+const attentePanel: PanelDefinition = {
+  id: PanelId.ATTENTE,
+  channelKey: 'GENERAL_ATTENTE',
+  perPole: false,
+  async render(): Promise<PanelRender> {
+    const waiting = await prisma.member.findMany({
+      where: { poleId: null, status: { not: 'PARTI' } },
+      orderBy: { joinedAt: 'asc' },
+      take: LIST_LIMIT,
+    });
+
+    const total = await prisma.member.count({
+      where: { poleId: null, status: { not: 'PARTI' } },
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle('👋 Bienvenue')
+      .setColor(total > 0 ? 0xf39c12 : 0x27ae60)
+      .setDescription(
+        "Vous êtes en attente d'affectation. Un responsable va vous attribuer votre " +
+          "pôle, ce qui vous donnera accès à vos salons.",
+      )
+      .addFields({ name: 'En attente', value: `**${total}** membre(s)` });
+
+    if (waiting.length > 0) {
+      embed.addFields({
+        name: 'Derniers arrivants',
+        value: waiting.map((m) => `• <@${m.discordId}>`).join('\n'),
+      });
+    }
+
+    embed.setFooter({ text: panelMarker(PanelId.ATTENTE, null) }).setTimestamp();
+
+    return {
+      embeds: [embed],
+      components: [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          button('affect:start', 'Attribuer un pôle', '➕', ButtonStyle.Primary),
+        ),
+      ],
+    };
+  },
+};
+
 export const PANEL_DEFINITIONS: PanelDefinition[] = [
+  attentePanel,
   polePanel,
   directionPanel,
   rhPanel,

@@ -1,7 +1,8 @@
 import { PermissionFlagsBits, OverwriteResolvable, Guild } from 'discord.js';
-import { Grade } from '@prisma/client';
+import { Grade, PoleName } from '@prisma/client';
 import { GRADE_HIERARCHY, isGradeHigherOrEqual } from '@apptypes/grade.types';
 import GuildStructureService from '@services/GuildStructureService';
+import { getRolesForPole } from '@config/poleRoles.config';
 
 /** Table `Grade → ID de rôle Discord`, résolue une fois par exécution de setup. */
 export type RoleIdMap = Map<Grade, string>;
@@ -11,6 +12,27 @@ export interface ChannelAccess {
   minGradeView?: Grade;
   minGradeWrite?: Grade;
   botOnlyWrite?: boolean;
+  poleRestricted?: boolean;
+}
+
+/** IDs des rôles d'appartenance d'un pôle, à autoriser sur ses salons. */
+export type PoleRoleIds = string[];
+
+/**
+ * Charge les IDs des rôles d'un pôle depuis le registre.
+ *
+ * Les quatre rangs donnent accès à la catégorie : un Directeur n'a pas besoin de
+ * cumuler son rang et le rôle « Membre ».
+ */
+export async function loadPoleRoleIds(guild: Guild, pole: PoleName): Promise<PoleRoleIds> {
+  const ids: string[] = [];
+
+  for (const config of getRolesForPole(pole)) {
+    const id = await GuildStructureService.get(config.key);
+    if (id && guild.roles.cache.has(id)) ids.push(id);
+  }
+
+  return ids;
 }
 
 /**
@@ -53,11 +75,14 @@ export function buildChannelOverwrites(
   guild: Guild,
   roleIds: RoleIdMap,
   access: ChannelAccess,
+  poleRoleIds: PoleRoleIds = [],
 ): OverwriteResolvable[] {
-  const { minGradeView, minGradeWrite, botOnlyWrite } = access;
+  const { minGradeView, minGradeWrite, botOnlyWrite, poleRestricted } = access;
 
   const everyoneDeny = [];
-  if (minGradeView) everyoneDeny.push(PermissionFlagsBits.ViewChannel);
+  // Un salon cloisonné est masqué à tous par défaut : seuls les porteurs d'un
+  // rôle du pôle — et la direction générale — le voient.
+  if (minGradeView || poleRestricted) everyoneDeny.push(PermissionFlagsBits.ViewChannel);
 
   if (botOnlyWrite) {
     // Les fils sont refusés aussi : sans cela, un membre contournerait le
@@ -89,12 +114,33 @@ export function buildChannelOverwrites(
     });
   }
 
+  // Salon cloisonné : chaque rôle du pôle ouvre l'accès, et l'écriture suit sauf
+  // si le salon est un hub réservé au bot.
+  if (poleRestricted) {
+    for (const roleId of poleRoleIds) {
+      const allow = [PermissionFlagsBits.ViewChannel];
+      if (!botOnlyWrite) allow.push(PermissionFlagsBits.SendMessages);
+      overwrites.push({ id: roleId, allow });
+    }
+  }
+
   // Sans aucune restriction, le salon est ouvert : rien à accorder par rôle.
-  if (!minGradeView && !minGradeWrite && !botOnlyWrite) return overwrites;
+  if (!minGradeView && !minGradeWrite && !botOnlyWrite && !poleRestricted) return overwrites;
 
   for (const grade of GRADE_HIERARCHY) {
     const roleId = roleIds.get(grade);
     if (!roleId) continue;
+
+    // Sur un salon cloisonné, la direction générale garde une vue d'ensemble :
+    // sans cela, piloter l'entreprise imposerait de cumuler les 32 rôles.
+    if (poleRestricted) {
+      if (isGradeHigherOrEqual(grade, Grade.DIRECTEUR_GENERAL)) {
+        const allow = [PermissionFlagsBits.ViewChannel];
+        if (!botOnlyWrite) allow.push(PermissionFlagsBits.SendMessages);
+        overwrites.push({ id: roleId, allow });
+      }
+      continue;
+    }
 
     const canView = !minGradeView || isGradeHigherOrEqual(grade, minGradeView);
     // Voir est un prérequis pour écrire : inutile d'accorder SendMessages à un

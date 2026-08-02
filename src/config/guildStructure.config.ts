@@ -27,6 +27,14 @@ export interface ChannelConfig {
    * permission Administrator.
    */
   botOnlyWrite?: boolean;
+  /**
+   * Salon réservé aux porteurs d'un rôle du pôle.
+   *
+   * Le cloisonnement se fait par rôle d'appartenance, indépendamment du grade
+   * business : un Responsable RH n'a aucune raison de voir les salons du pôle
+   * Technique s'il n'en fait pas partie.
+   */
+  poleRestricted?: boolean;
   topic?: string;
 }
 
@@ -84,6 +92,15 @@ export const GUILD_STRUCTURE: CategoryConfig[] = [
         key: 'GENERAL_DISCUSSION',
         type: ChannelType.GuildText,
         topic: "Discussion ouverte à toute l'équipe",
+      },
+      {
+        // Seul salon visible d'un arrivant tant qu'aucun pôle ne lui est
+        // attribué : il n'a accès à rien d'autre avant son affectation.
+        name: 'en-attente',
+        key: 'GENERAL_ATTENTE',
+        type: ChannelType.GuildText,
+        botOnlyWrite: true,
+        topic: "Accueil des nouveaux membres — en attente d'affectation",
       },
     ],
   },
@@ -155,12 +172,14 @@ export const POLE_CHANNELS: ChannelConfig[] = [
     key: 'HUB',
     type: ChannelType.GuildText,
     botOnlyWrite: true,
+    poleRestricted: true,
     topic: 'Panneau du pôle — projets, tâches, objectifs, annonces',
   },
   {
     name: 'discussion',
     key: 'DISCUSSION',
     type: ChannelType.GuildText,
+    poleRestricted: true,
     topic: 'Échanges du pôle',
   },
 ];

@@ -18,12 +18,14 @@ disponibles en parallèle.
 | RH | `#rh` | Candidater, absence, mon dossier, candidatures |
 | Général | `#general` | Annonce, réunion, objectif, roadmap |
 | Documents | `#documents` | Publier, consulter |
+| Attente | `#en-attente` | Attribuer un pôle à un arrivant |
 
-### Modules opérationnels — 17 commandes
+### Modules opérationnels — 18 commandes
 
 | Commande | Périmètre | Grade minimum |
 |---|---|---|
 | `/setup` | Structure Discord complète, idempotente | Fondateur |
+| `/pole` | Affectation des membres aux pôles | Chef d'équipe |
 | `/reset` | Supprime toute la structure (double confirmation) | Fondateur |
 | `/rh` | Candidatures, promotions, sanctions, dossier RH | Recrue |
 | `/projet` | Création, workflow, participants, commentaires | Collaborateur |
@@ -60,7 +62,7 @@ lascenerp/
 ├── prisma/schema.prisma          # Schéma complet (tous les modules)
 ├── src/
 │   ├── core/                      # Moteur Discord.js (Client, CommandHandler, EventHandler, Logger, ErrorHandler)
-│   ├── commands/                  # Déclaration slash commands (16 commandes)
+│   ├── commands/                  # Déclaration slash commands (18 commandes)
 │   ├── events/                    # Listeners Discord.js
 │   ├── database/                  # Connexion Prisma
 │   ├── services/                  # Services transverses (Permission, Member, GuildStructure, Embed)
@@ -75,6 +77,9 @@ lascenerp/
 │       ├── projects/              # Gestion des projets
 │       ├── tasks/                 # Gestion des tâches
 │       ├── announcements/         # Annonces + diffusion
+│       ├── panels/               # Panneaux interactifs épinglés
+│       ├── poleAssignment/       # Affectation aux pôles
+│       ├── reset/                # Suppression de la structure
 │       └── meetings/ decisions/ expenses/ objectives/ kpi/ alerts/
 │           audit/ roadmap/ documents/ absences/ dashboard/
 ├── .env.example
@@ -137,7 +142,7 @@ npm start
 
 ### Hiérarchie des grades
 
-9 grades de permission cascade (chaque grade peut agir sur tout ce qui lui est inférieur) :
+8 grades de permission cascade (chaque grade peut agir sur tout ce qui lui est inférieur) :
 
 1. **Fondateur** — accès total (Admin Discord)
 2. **Co-Fondateur** — accès total (Admin Discord)
@@ -148,14 +153,49 @@ npm start
 7. **Collaborateur** — création tâche, participation projets
 8. **Recrue** — accès limité (onboarding + candidatures internes)
 
-### Structure du serveur — 24 salons
+### Deux grilles de rôles
 
-**Catégories fixes (8 salons)**
+Le serveur héberge **deux populations distinctes** :
+
+**1. Le staff du projet global** — 8 grades en cascade qui pilotent l'entreprise :
+Fondateur, Co-Fondateur, Directeur Général, Directeur de Pôle, Responsable,
+Chef d'équipe, Collaborateur, Recrue.
+
+**2. Le staff opérationnel par pôle** — 32 rôles (4 rangs × 8 pôles) décrivant
+l'appartenance à une entité : `Directeur Garry's Mod`, `Responsable Web`,
+`Membre Technique`… Ces rôles sont **indépendants** des grades business : un
+Admin en jeu sur Garry's Mod n'est pas un « Collaborateur de l'entreprise ».
+
+Les deux grilles coexistent, un membre pouvant porter un grade de chaque.
+
+### Cloisonnement par pôle
+
+Chaque catégorie de pôle n'est visible que par les porteurs d'un de ses 4 rôles.
+Le staff RH ne voit pas les salons Technique, le staff Garry's Mod ne voit pas
+le Web. Seule la **direction générale** (Directeur Général et au-dessus) garde
+une vue d'ensemble — sans quoi piloter l'entreprise imposerait de cumuler les
+32 rôles.
+
+### Parcours d'un nouvel arrivant
+
+```
+Rejoint le serveur
+  → aucun rôle attribué, voit uniquement #en-attente
+  → un Chef d'équipe+ clique « Attribuer un pôle » sur le panneau
+  → choisit le membre, le pôle, le rang
+  → le membre reçoit son rôle et découvre sa catégorie
+```
+
+Aucun accès n'est ouvert avant validation humaine.
+
+### Structure du serveur — 25 salons
+
+**Catégories fixes (9 salons)**
 
 | Catégorie | Salons |
 |---|---|
 | 📋 Direction | `direction` 🔒 · `direction-discussion` |
-| 📢 Général | `general` 🔒 · `general-discussion` |
+| 📢 Général | `general` 🔒 · `general-discussion` · `en-attente` 🔒 |
 | 🧑‍💼 RH | `rh` 🔒 · `rh-confidentiel` |
 | 📚 Documents | `documents` 🔒 |
 | ⚙️ Système | `journal` 🔒 |
@@ -176,7 +216,7 @@ Partenariats, Animation.
 ## 📝 Workflows clés
 
 ### Setup automatique (`/setup`)
-1. Crée 9 rôles hiérarchiques colorés avec permissions Discord adaptées
+1. Crée 8 rôles hiérarchiques colorés avec permissions Discord adaptées
 2. Crée catégories + salons complets (Direction, Général, 8 pôles, RH, Documents, Archives)
 3. Applique overwrites de permissions basés sur les grades
 4. Persiste IDs générés en DB (`GuildConfig`)

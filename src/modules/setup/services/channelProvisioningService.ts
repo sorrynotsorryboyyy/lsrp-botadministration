@@ -8,7 +8,13 @@ import {
 } from '@config/guildStructure.config';
 import { POLES_CONFIG } from '@config/poles.config';
 import GuildStructureService from '@services/GuildStructureService';
-import { buildChannelOverwrites, loadRoleIdMap, RoleIdMap } from '@utils/permissionOverwrites';
+import {
+  buildChannelOverwrites,
+  loadPoleRoleIds,
+  loadRoleIdMap,
+  PoleRoleIds,
+  RoleIdMap,
+} from '@utils/permissionOverwrites';
 import prisma from '@database/prisma';
 import logger from '@core/Logger';
 import { ProvisionResult } from '../types';
@@ -68,7 +74,15 @@ export async function provisionPoles(guild: Guild): Promise<ChannelProvisionOutc
     const categoryKey = GuildStructureService.poleCategoryKey(poleConfig.name);
 
     try {
-      const category = await ensureCategory(guild, categoryName, categoryKey);
+      // Les rôles du pôle conditionnent la visibilité de toute la catégorie.
+      const poleRoleIds = await loadPoleRoleIds(guild, poleConfig.name);
+
+      const category = await ensureCategory(
+        guild,
+        categoryName,
+        categoryKey,
+        buildChannelOverwrites(guild, roleIds, { poleRestricted: true }, poleRoleIds),
+      );
 
       // La table `Pole` est la référence métier (relations projets, annonces…) :
       // on la garde alignée sur la catégorie Discord réellement provisionnée.
@@ -103,6 +117,7 @@ export async function provisionPoles(guild: Guild): Promise<ChannelProvisionOutc
           category.channel,
           named,
           GuildStructureService.poleChannelKey(poleConfig.name, channelConfig.key),
+          poleRoleIds,
         );
         channels.push({ ...result, label: `${poleConfig.displayName} › ${result.label}` });
       }
@@ -127,12 +142,14 @@ async function ensureCategory(
   guild: Guild,
   name: string,
   configKey: string,
+  overwrites?: Awaited<ReturnType<typeof buildChannelOverwrites>>,
 ): Promise<{ channel: CategoryChannel; created: boolean }> {
   const storedId = await GuildStructureService.getChannelId(configKey);
 
   if (storedId) {
     const existing = guild.channels.cache.get(storedId);
     if (existing?.type === ChannelType.GuildCategory) {
+      if (overwrites) await existing.edit({ permissionOverwrites: overwrites });
       return { channel: existing, created: false };
     }
   }
@@ -143,6 +160,7 @@ async function ensureCategory(
   );
 
   if (byName) {
+    if (overwrites) await byName.edit({ permissionOverwrites: overwrites });
     await GuildStructureService.setChannelId(configKey, byName.id);
     return { channel: byName, created: false };
   }
@@ -150,6 +168,7 @@ async function ensureCategory(
   const category = await guild.channels.create({
     name,
     type: ChannelType.GuildCategory,
+    permissionOverwrites: overwrites,
     reason: 'Setup La Scène RP — création de la structure',
   });
 
@@ -172,9 +191,10 @@ async function ensureChannel(
   category: CategoryChannel,
   config: ChannelConfig,
   configKey: string,
+  poleRoleIds: PoleRoleIds = [],
 ): Promise<ProvisionResult> {
   try {
-    const overwrites = buildChannelOverwrites(guild, roleIds, config);
+    const overwrites = buildChannelOverwrites(guild, roleIds, config, poleRoleIds);
     const existing = await findExistingChannel(guild, category, config.name, configKey);
 
     if (existing) {

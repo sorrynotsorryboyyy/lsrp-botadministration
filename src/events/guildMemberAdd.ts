@@ -19,14 +19,9 @@ const event: EventModule = {
         Grade.RECRUE,
       );
 
-      const recrueRoleId = await PermissionService.getRoleIdForGrade(Grade.RECRUE);
-      if (recrueRoleId) {
-        const role = member.guild.roles.cache.get(recrueRoleId);
-        if (role) {
-          await member.roles.add(role);
-          logger.info(`Added Recrue role to ${member.user.tag}`);
-        }
-      }
+      // Aucun rôle n'est attribué automatiquement : un arrivant n'a accès qu'au
+      // salon d'attente jusqu'à ce qu'un responsable l'affecte à un pôle. Donner
+      // un rôle ici ouvrirait des salons avant toute validation humaine.
 
       await prisma.memberHistory.create({
         data: {

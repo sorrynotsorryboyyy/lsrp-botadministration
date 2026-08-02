@@ -218,7 +218,7 @@ d'une base propre — les deux organisations ne peuvent pas coexister.
            → modal : recopier le nom exact du serveur
            → suppression + rapport
 
-/setup     → recrée 24 salons, 13 catégories, 9 rôles
+/setup     → recrée 25 salons, 13 catégories, 40 rôles
            → publie les 13 panneaux épinglés
 ```
 

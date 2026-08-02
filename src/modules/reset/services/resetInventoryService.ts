@@ -4,13 +4,21 @@ import prisma from '@database/prisma';
 import GuildStructureService from '@services/GuildStructureService';
 import { GRADE_HIERARCHY } from '@apptypes/grade.types';
 import { ROLES_CONFIG } from '@config/roles.config';
+import { POLE_ROLES } from '@config/poleRoles.config';
 import { GUILD_STRUCTURE, POLE_CHANNELS } from '@config/guildStructure.config';
 import { POLES_CONFIG } from '@config/poles.config';
 import logger from '@core/Logger';
 import { ProtectedTarget, ResetInventory, ResetTarget } from '../types';
 
 /** Préfixes des clés `GuildConfig` créées par le bot, purgées au reset. */
-export const MANAGED_KEY_PREFIXES = ['ROLE_', 'CATEGORY_', 'CHANNEL_', 'POLE_', 'PANEL_'];
+export const MANAGED_KEY_PREFIXES = [
+  'ROLE_',
+  'POLEROLE_',
+  'CATEGORY_',
+  'CHANNEL_',
+  'POLE_',
+  'PANEL_',
+];
 
 /**
  * Recense tout ce que `/reset` va détruire, sans rien modifier.
@@ -72,6 +80,17 @@ async function collectFromRegistry(
     }
   }
 
+  // Les 32 rôles d'appartenance aux pôles suivent le même sort.
+  for (const config of POLE_ROLES) {
+    const id = await GuildStructureService.get(config.key);
+    const role = id ? guild.roles.cache.get(id) : null;
+
+    if (role && !seen.has(role.id)) {
+      seen.add(role.id);
+      roles.push({ kind: 'role', id: role.id, label: role.name, source: 'registry' });
+    }
+  }
+
   const channelKeys = collectExpectedChannelKeys();
 
   for (const key of channelKeys) {
@@ -109,7 +128,10 @@ function collectByName(
   categories: ResetTarget[],
   roles: ResetTarget[],
 ): void {
-  const roleNames = new Set(ROLES_CONFIG.map((config) => config.name));
+  const roleNames = new Set([
+    ...ROLES_CONFIG.map((config) => config.name),
+    ...POLE_ROLES.map((config) => config.name),
+  ]);
   const categoryNames = new Set<string>();
   const channelNames = new Set<string>();
 
