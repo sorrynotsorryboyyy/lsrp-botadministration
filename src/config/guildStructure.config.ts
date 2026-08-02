@@ -184,7 +184,26 @@ export const POLE_CHANNELS: ChannelConfig[] = [
   },
 ];
 
-/** Compose le nom réel d'un salon de pôle à partir du slug et du modèle. */
+/**
+ * Noms de salons réservés par la structure fixe.
+ *
+ * Le pôle « Général » produirait sinon un `#general` en collision avec le hub de
+ * la catégorie Général : Discord accepte deux salons homonymes dans des
+ * catégories différentes, mais la recherche d'idempotence et les panneaux s'y
+ * perdent — les deux panneaux atterrissaient dans le même salon.
+ */
+const RESERVED_CHANNEL_NAMES = new Set(
+  GUILD_STRUCTURE.flatMap((category) => category.channels.map((channel) => channel.name)),
+);
+
+/**
+ * Compose le nom réel d'un salon de pôle.
+ *
+ * Un nom entrant en collision avec la structure fixe est préfixé par `pole-`
+ * (`#pole-general`), ce qui lève l'ambiguïté sans toucher aux autres pôles.
+ */
 export function buildPoleChannelName(slug: string, config: ChannelConfig): string {
-  return config.name ? `${slug}-${config.name}` : slug;
+  const base = config.name ? `${slug}-${config.name}` : slug;
+
+  return RESERVED_CHANNEL_NAMES.has(base) ? `pole-${base}` : base;
 }

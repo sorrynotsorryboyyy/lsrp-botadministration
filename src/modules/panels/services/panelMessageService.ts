@@ -82,7 +82,13 @@ async function findExistingMessage(
 
   if (storedId) {
     try {
-      return await channel.messages.fetch(storedId);
+      const stored = await channel.messages.fetch(storedId);
+
+      // Purge des exemplaires concurrents avant de rendre celui de référence :
+      // un incident passé a pu en laisser plusieurs épinglés.
+      await removeDuplicates(channel, definition, pole, stored.id);
+
+      return stored;
     } catch (error) {
       const code = (error as { code?: number }).code;
 
@@ -108,26 +114,83 @@ async function findPinnedByMarker(
     const pinned = await channel.messages.fetchPinned();
     const marker = panelMarker(definition.id, pole);
 
-    return (
-      pinned.find(
-        (message) =>
-          message.author.id === channel.client.user?.id &&
-          message.embeds.some((embed) => embed.footer?.text?.includes(marker)),
-      ) ?? null
+    const matching = pinned.filter(
+      (message) =>
+        message.author.id === channel.client.user?.id &&
+        message.embeds.some((embed) => embed.footer?.text?.includes(marker)),
     );
+
+    if (matching.size === 0) return null;
+
+    // Plusieurs exemplaires possibles : on retient le plus récent et on purge
+    // les autres, sinon ils s'accumuleraient à chaque incident.
+    const sorted = [...matching.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+    const keep = sorted[0];
+
+    await removeDuplicates(channel, definition, pole, keep.id);
+
+    return keep;
   } catch (error) {
     logger.warn(`Panneau ${definition.id} : lecture des épingles impossible.`, error);
     return null;
   }
 }
 
-/** Vrai si d'autres messages sont passés après le panneau. */
+/**
+ * Supprime les exemplaires épinglés du panneau autres que celui de référence.
+ *
+ * Ne lève jamais : le nettoyage est un confort, son échec ne doit pas empêcher
+ * le panneau de s'afficher.
+ */
+async function removeDuplicates(
+  channel: TextChannel,
+  definition: PanelDefinition,
+  pole: PoleName | null,
+  keepId: string,
+): Promise<void> {
+  try {
+    const pinned = await channel.messages.fetchPinned();
+    const marker = panelMarker(definition.id, pole);
+
+    for (const message of pinned.values()) {
+      if (message.id === keepId) continue;
+      if (message.author.id !== channel.client.user?.id) continue;
+      if (!message.embeds.some((embed) => embed.footer?.text?.includes(marker))) continue;
+
+      await message.delete().catch(() => undefined);
+      logger.info(`Panneau ${definition.id} : doublon supprimé (${message.id}).`);
+    }
+  } catch (error) {
+    logger.warn(`Panneau ${definition.id} : nettoyage des doublons impossible.`, error);
+  }
+}
+
+/**
+ * Vrai si des messages d'utilisateurs sont passés après le panneau.
+ *
+ * Deux catégories de messages sont ignorées, sans quoi tout panneau se croirait
+ * systématiquement enseveli et se republierait à chaque passage du cron :
+ *
+ * - les messages système, dont le « X a épinglé un message » que Discord poste
+ *   juste après notre propre `pin()` ;
+ * - les autres panneaux et fiches du bot, un salon hub n'étant alimenté que par
+ *   lui.
+ */
 async function isBuriedInChannel(channel: TextChannel, panel: Message): Promise<boolean> {
   try {
     const recent = await channel.messages.fetch({ limit: TAIL_SCAN_LIMIT });
-    const newest = recent.first();
 
-    return newest !== undefined && newest.id !== panel.id;
+    const blocking = recent.filter(
+      (message) =>
+        message.id !== panel.id &&
+        message.system !== true &&
+        message.author.id !== channel.client.user?.id &&
+        // `createdTimestamp` plutôt que l'ordre de la collection : un message
+        // antérieur au panneau ne l'enterre pas.
+        message.createdTimestamp > panel.createdTimestamp,
+    );
+
+    return blocking.size > 0;
   } catch {
     // En cas de doute, on ne republie pas : mieux vaut un panneau mal placé
     // qu'un panneau dupliqué à chaque rafraîchissement.
