@@ -46,7 +46,11 @@ const event: EventModule = {
         }
 
         await handler.execute(interaction);
-      } else if (interaction.isStringSelectMenu()) {
+      } else if (interaction.isAnySelectMenu()) {
+        // `isAnySelectMenu` couvre les sélecteurs de chaînes, de membres, de
+        // rôles, de salons et mentionnables. Ne tester que `isStringSelectMenu`
+        // laissait un sélecteur de membre sans handler : Discord affichait alors
+        // « n'a pas répondu à temps » au bout de trois secondes.
         const prefix = interaction.customId.split(':')[0];
         const handler = client.selectMenus.get(prefix);
 

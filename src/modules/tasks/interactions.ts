@@ -4,7 +4,7 @@ import {
   MessageFlags,
   ModalBuilder,
   ModalSubmitInteraction,
-  StringSelectMenuInteraction,
+  AnySelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
 } from 'discord.js';
@@ -112,7 +112,7 @@ export const taskButtons: ButtonHandler = {
 /** Select menu de statut : `tacheselect:status:<taskId>`. */
 export const taskStatusSelect: SelectMenuHandler = {
   customIdPrefix: 'tacheselect',
-  async execute(interaction: StringSelectMenuInteraction): Promise<void> {
+  async execute(interaction: AnySelectMenuInteraction): Promise<void> {
     const [, , taskId] = interaction.customId.split(':');
     if (!taskId || !interaction.inCachedGuild()) return;
 

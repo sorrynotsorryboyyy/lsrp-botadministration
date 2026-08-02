@@ -5,6 +5,7 @@ import {
   AutocompleteInteraction,
   ChatInputCommandInteraction,
   ButtonInteraction,
+  AnySelectMenuInteraction,
   StringSelectMenuInteraction,
   ModalSubmitInteraction,
 } from 'discord.js';
@@ -45,7 +46,11 @@ export interface ButtonHandler {
 export interface SelectMenuHandler {
   customIdPrefix: string;
   minGrade?: Grade;
-  execute: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  /**
+   * Reçoit n'importe quel type de sélecteur — chaînes, membres, rôles, salons.
+   * Le handler affine lui-même selon ce qu'il a déclaré côté composant.
+   */
+  execute: (interaction: AnySelectMenuInteraction) => Promise<void>;
 }
 
 export interface ModalHandler {

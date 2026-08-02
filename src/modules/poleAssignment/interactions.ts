@@ -1,12 +1,11 @@
 import {
   ActionRowBuilder,
+  AnySelectMenuInteraction,
   ButtonInteraction,
   MessageFlags,
   StringSelectMenuBuilder,
-  StringSelectMenuInteraction,
   StringSelectMenuOptionBuilder,
   UserSelectMenuBuilder,
-  UserSelectMenuInteraction,
 } from 'discord.js';
 import { Grade, PoleName } from '@prisma/client';
 import { isGradeHigherOrEqual } from '@apptypes/grade.types';
@@ -76,13 +75,12 @@ export const assignmentButtons: ButtonHandler = {
 /** Sélection du membre : `affectuser:pick`. */
 export const assignmentUserSelect: SelectMenuHandler = {
   customIdPrefix: 'affectuser',
-  async execute(interaction): Promise<void> {
-    const select = interaction as unknown as UserSelectMenuInteraction;
-    if (!select.inCachedGuild()) return;
+  async execute(interaction: AnySelectMenuInteraction): Promise<void> {
+    if (!interaction.inCachedGuild()) return;
 
-    const userId = select.values[0];
+    const userId = interaction.values[0];
 
-    await select.update({
+    await interaction.update({
       embeds: [
         EmbedFactory.infoEmbed('Affectation à un pôle', `Membre : <@${userId}>\nChoisissez le pôle.`),
       ],
@@ -109,7 +107,7 @@ export const assignmentUserSelect: SelectMenuHandler = {
 /** Sélection du pôle : `affectpole:pick:<userId>`. */
 export const assignmentPoleSelect: SelectMenuHandler = {
   customIdPrefix: 'affectpole',
-  async execute(interaction: StringSelectMenuInteraction): Promise<void> {
+  async execute(interaction: AnySelectMenuInteraction): Promise<void> {
     if (!interaction.inCachedGuild()) return;
 
     const [, , userId] = interaction.customId.split(':');
@@ -144,7 +142,7 @@ export const assignmentPoleSelect: SelectMenuHandler = {
 /** Sélection du rang et exécution : `affectrank:pick:<userId>:<pole>`. */
 export const assignmentRankSelect: SelectMenuHandler = {
   customIdPrefix: 'affectrank',
-  async execute(interaction: StringSelectMenuInteraction): Promise<void> {
+  async execute(interaction: AnySelectMenuInteraction): Promise<void> {
     if (!interaction.inCachedGuild()) return;
 
     const [, , userId, poleRaw] = interaction.customId.split(':');

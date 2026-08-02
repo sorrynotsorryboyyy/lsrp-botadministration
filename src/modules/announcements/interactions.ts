@@ -1,4 +1,4 @@
-import { MessageFlags, StringSelectMenuInteraction } from 'discord.js';
+import { AnySelectMenuInteraction, MessageFlags } from 'discord.js';
 import EmbedFactory from '@services/EmbedFactory';
 import { failGracefully, resolveActor } from '@services/InteractionContext';
 import { SelectMenuHandler } from '@apptypes/command.types';
@@ -20,7 +20,7 @@ import { getActorPoleName } from './handlers/announcementHandler';
  */
 export const announcementPoleSelect: SelectMenuHandler = {
   customIdPrefix: 'annonceselect',
-  async execute(interaction: StringSelectMenuInteraction): Promise<void> {
+  async execute(interaction: AnySelectMenuInteraction): Promise<void> {
     const [, , draftId] = interaction.customId.split(':');
     if (!draftId || !interaction.inCachedGuild()) return;
 

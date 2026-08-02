@@ -11,7 +11,7 @@ import logger from '@core/Logger';
  * dégrade (log seul) ou s'il avertit l'utilisateur.
  */
 export class ChannelResolver {
-  /** Résout un salon de la structure fixe, par sa clé (ex. `RH_CANDIDATURES`). */
+  /** Résout un salon de la structure fixe, par sa clé (ex. `RH_HUB`). */
   static async getChannel(guild: Guild, channelKey: string): Promise<TextChannel | null> {
     const id = await GuildStructureService.getChannelId(GuildStructureService.channelKey(channelKey));
     return this.fetchTextChannel(guild, id, channelKey);

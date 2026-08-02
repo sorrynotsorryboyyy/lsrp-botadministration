@@ -4,7 +4,7 @@ import {
   MessageFlags,
   ModalBuilder,
   ModalSubmitInteraction,
-  StringSelectMenuInteraction,
+  AnySelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
 } from 'discord.js';
@@ -68,7 +68,7 @@ export const projectButtons: ButtonHandler = {
 /** Select menu de statut : `projetselect:status:<projectId>`. */
 export const projectStatusSelect: SelectMenuHandler = {
   customIdPrefix: 'projetselect',
-  async execute(interaction: StringSelectMenuInteraction): Promise<void> {
+  async execute(interaction: AnySelectMenuInteraction): Promise<void> {
     const [, , projectId] = interaction.customId.split(':');
     if (!projectId || !interaction.inCachedGuild()) return;
 
@@ -167,17 +167,19 @@ export const projectCommentModal: ModalHandler = {
 
 /** Annonce le changement de statut dans le salon du pôle. */
 async function publishStatusChange(
-  interaction: StringSelectMenuInteraction<'cached'>,
+  interaction: AnySelectMenuInteraction<'cached'>,
   project: Awaited<ReturnType<typeof getProject>>,
   previousStatus: ProjectStatus,
 ): Promise<void> {
   if (!project?.pole) return;
 
-  // Un projet archivé rejoint le salon d'archives plutôt que celui du pôle.
-  const channel =
-    project.status === ProjectStatus.ARCHIVE
-      ? await ChannelResolver.getChannel(interaction.guild, 'ARCHIVES_PROJETS')
-      : await ChannelResolver.getPoleChannel(interaction.guild, project.pole.name, 'PROJETS');
+  // Tout reste dans le hub du pôle : la catégorie Archives a disparu, un projet
+  // clôturé se retrouve désormais par filtre plutôt qu'en changeant de salon.
+  const channel = await ChannelResolver.getPoleChannel(
+    interaction.guild,
+    project.pole.name,
+    'HUB',
+  );
 
   await channel?.send({
     embeds: [buildStatusChangeEmbed(project, previousStatus, interaction.user.id)],
