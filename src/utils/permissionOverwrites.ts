@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, OverwriteResolvable, Guild } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, OverwriteResolvable, Guild } from 'discord.js';
 import { Grade, PoleName } from '@prisma/client';
 import { GRADE_HIERARCHY, isGradeHigherOrEqual } from '@apptypes/grade.types';
 import GuildStructureService from '@services/GuildStructureService';
@@ -13,6 +13,8 @@ export interface ChannelAccess {
   minGradeWrite?: Grade;
   botOnlyWrite?: boolean;
   poleRestricted?: boolean;
+  /** Type Discord ; un vocal raisonne en `Connect`/`Speak`, pas en `SendMessages`. */
+  type?: ChannelType;
 }
 
 /** IDs des rôles d'appartenance d'un pôle, à autoriser sur ses salons. */
@@ -79,10 +81,25 @@ export function buildChannelOverwrites(
 ): OverwriteResolvable[] {
   const { minGradeView, minGradeWrite, botOnlyWrite, poleRestricted } = access;
 
+  const isVoice = access.type === ChannelType.GuildVoice;
+
+  /** Permissions d'usage du salon, une fois l'accès accordé. */
+  const usePermissions = isVoice
+    ? [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
+    : [PermissionFlagsBits.SendMessages];
+
   const everyoneDeny = [];
   // Un salon cloisonné est masqué à tous par défaut : seuls les porteurs d'un
   // rôle du pôle — et la direction générale — le voient.
-  if (minGradeView || poleRestricted) everyoneDeny.push(PermissionFlagsBits.ViewChannel);
+  if (minGradeView || poleRestricted) {
+    everyoneDeny.push(PermissionFlagsBits.ViewChannel);
+
+    // Sur un vocal, on refuse aussi `Connect` explicitement. Discord empêche en
+    // pratique de rejoindre un salon invisible, mais s'appuyer sur ce
+    // comportement implicite rendrait le cloisonnement dépendant d'un détail
+    // d'implémentation de la plateforme.
+    if (isVoice) everyoneDeny.push(PermissionFlagsBits.Connect);
+  }
 
   if (botOnlyWrite) {
     // Les fils sont refusés aussi : sans cela, un membre contournerait le
@@ -94,7 +111,7 @@ export function buildChannelOverwrites(
       PermissionFlagsBits.SendMessagesInThreads,
     );
   } else if (minGradeWrite) {
-    everyoneDeny.push(PermissionFlagsBits.SendMessages);
+    everyoneDeny.push(...usePermissions);
   }
 
   const overwrites: OverwriteResolvable[] = [{ id: guild.id, deny: everyoneDeny }];
@@ -119,7 +136,7 @@ export function buildChannelOverwrites(
   if (poleRestricted) {
     for (const roleId of poleRoleIds) {
       const allow = [PermissionFlagsBits.ViewChannel];
-      if (!botOnlyWrite) allow.push(PermissionFlagsBits.SendMessages);
+      if (!botOnlyWrite) allow.push(...usePermissions);
       overwrites.push({ id: roleId, allow });
     }
   }
@@ -136,7 +153,7 @@ export function buildChannelOverwrites(
     if (poleRestricted) {
       if (isGradeHigherOrEqual(grade, Grade.DIRECTEUR_GENERAL)) {
         const allow = [PermissionFlagsBits.ViewChannel];
-        if (!botOnlyWrite) allow.push(PermissionFlagsBits.SendMessages);
+        if (!botOnlyWrite) allow.push(...usePermissions);
         overwrites.push({ id: roleId, allow });
       }
       continue;
@@ -151,7 +168,7 @@ export function buildChannelOverwrites(
     const allow = [];
     // On ne réaccorde ViewChannel que s'il a été refusé à @everyone.
     if (canView && minGradeView) allow.push(PermissionFlagsBits.ViewChannel);
-    if (canWrite && minGradeWrite) allow.push(PermissionFlagsBits.SendMessages);
+    if (canWrite && minGradeWrite) allow.push(...usePermissions);
 
     if (allow.length > 0) {
       overwrites.push({ id: roleId, allow });

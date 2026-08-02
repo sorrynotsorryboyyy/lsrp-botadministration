@@ -108,7 +108,7 @@ export async function provisionPoles(guild: Guild): Promise<ChannelProvisionOutc
         // préfixé par le slug du pôle pour éviter les homonymes entre pôles.
         const named: ChannelConfig = {
           ...channelConfig,
-          name: buildPoleChannelName(poleConfig.slug, channelConfig),
+          name: buildPoleChannelName(poleConfig.slug, channelConfig, poleConfig.displayName),
         };
 
         const result = await ensureChannel(
@@ -195,11 +195,20 @@ async function ensureChannel(
 ): Promise<ProvisionResult> {
   try {
     const overwrites = buildChannelOverwrites(guild, roleIds, config, poleRoleIds);
-    const existing = await findExistingChannel(guild, category, config.name, configKey);
+    const existing = await findExistingChannel(
+      guild,
+      category,
+      config.name,
+      configKey,
+      config.type,
+    );
+
+    const isVoice = config.type === ChannelType.GuildVoice;
 
     if (existing) {
       await existing.edit({
-        topic: config.topic,
+        // Un salon vocal n'a pas de sujet : le transmettre ferait échouer l'édition.
+        ...(isVoice ? {} : { topic: config.topic }),
         permissionOverwrites: overwrites,
         parent: category.id,
       });
@@ -210,9 +219,9 @@ async function ensureChannel(
 
     const channel = await guild.channels.create({
       name: config.name,
-      type: ChannelType.GuildText,
+      type: isVoice ? ChannelType.GuildVoice : ChannelType.GuildText,
       parent: category.id,
-      topic: config.topic,
+      ...(isVoice ? {} : { topic: config.topic }),
       permissionOverwrites: overwrites,
       reason: 'Setup La Scène RP — création de la structure',
     });
@@ -229,26 +238,30 @@ async function ensureChannel(
 }
 
 /**
- * Cherche un salon texte existant par ID mémorisé puis par nom *au sein de la
- * catégorie* — deux pôles ont des salons homonymes (`annonces`, `projets`…),
- * la recherche doit donc être bornée au parent.
+ * Cherche un salon existant par ID mémorisé puis par nom *au sein de la
+ * catégorie* — plusieurs pôles ont des salons homonymes, la recherche doit donc
+ * être bornée au parent.
+ *
+ * Le type attendu est vérifié : un salon textuel ne doit pas être retrouvé à la
+ * place d'un vocal portant le même nom, ce qui produirait une édition invalide.
  */
 async function findExistingChannel(
   guild: Guild,
   category: CategoryChannel,
   name: string,
   configKey: string,
+  expectedType: ChannelType = ChannelType.GuildText,
 ): Promise<(GuildBasedChannel & { edit: Function }) | null> {
   const storedId = await GuildStructureService.getChannelId(configKey);
 
   if (storedId) {
     const byId = guild.channels.cache.get(storedId);
-    if (byId?.type === ChannelType.GuildText) return byId;
+    if (byId?.type === expectedType) return byId as GuildBasedChannel & { edit: Function };
   }
 
   const byName = category.children.cache.find(
-    (channel) => channel.type === ChannelType.GuildText && channel.name === name,
+    (channel) => channel.type === expectedType && channel.name === name,
   );
 
-  return byName?.type === ChannelType.GuildText ? byName : null;
+  return (byName as (GuildBasedChannel & { edit: Function }) | undefined) ?? null;
 }

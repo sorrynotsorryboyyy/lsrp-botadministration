@@ -5,7 +5,11 @@ import GuildStructureService from '@services/GuildStructureService';
 import { GRADE_HIERARCHY } from '@apptypes/grade.types';
 import { ROLES_CONFIG } from '@config/roles.config';
 import { POLE_ROLES } from '@config/poleRoles.config';
-import { GUILD_STRUCTURE, POLE_CHANNELS } from '@config/guildStructure.config';
+import {
+  GUILD_STRUCTURE,
+  POLE_CHANNELS,
+  buildPoleChannelName,
+} from '@config/guildStructure.config';
 import { POLES_CONFIG } from '@config/poles.config';
 import logger from '@core/Logger';
 import { ProtectedTarget, ResetInventory, ResetTarget } from '../types';
@@ -143,9 +147,7 @@ function collectByName(
   for (const pole of Object.values(POLES_CONFIG)) {
     categoryNames.add(`${pole.emoji} ${pole.displayName}`);
     for (const channel of POLE_CHANNELS) {
-      channelNames.add(channel.name);
-      channelNames.add(`${pole.slug}-${channel.name}`);
-      channelNames.add(pole.slug);
+      channelNames.add(buildPoleChannelName(pole.slug, channel, pole.displayName));
     }
   }
 
@@ -164,7 +166,11 @@ function collectByName(
       continue;
     }
 
-    if (channel.type === ChannelType.GuildText && channelNames.has(channel.name)) {
+    // Textuels et vocaux : les deux sont provisionnés par `/setup`.
+    const isManaged =
+      channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildVoice;
+
+    if (isManaged && channelNames.has(channel.name)) {
       seen.add(channel.id);
       channels.push({ kind: 'channel', id: channel.id, label: channel.name, source: 'name' });
     }

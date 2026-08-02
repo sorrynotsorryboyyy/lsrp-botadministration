@@ -188,19 +188,21 @@ Rejoint le serveur
 
 Aucun accès n'est ouvert avant validation humaine.
 
-### Structure du serveur — 25 salons
+### Structure du serveur — 35 salons
 
-**Catégories fixes (9 salons)**
+**Catégories fixes (11 salons)**
 
 | Catégorie | Salons |
 |---|---|
-| 📋 Direction | `direction` 🔒 · `direction-discussion` |
-| 📢 Général | `general` 🔒 · `general-discussion` · `en-attente` 🔒 |
+| 📋 Direction | `direction` 🔒 · `direction-discussion` · 🔊 Vocal Direction |
+| 📢 Général | `general` 🔒 · `general-discussion` · `en-attente` 🔒 · 🔊 Vocal Général |
 | 🧑‍💼 RH | `rh` 🔒 · `rh-confidentiel` |
 | 📚 Documents | `documents` 🔒 |
 | ⚙️ Système | `journal` 🔒 |
 
-**8 pôles × 2 salons** : `#<pole>` (hub 🔒) et `#<pole>-discussion`.
+**8 pôles × 3 salons** : `#<pole>` (hub 🔒), `#<pole>-discussion` et un vocal
+« 🔊 <Pôle> ». Le vocal est cloisonné comme le reste : seuls les membres du pôle
+peuvent le voir et s'y connecter.
 
 Pôles : Général, Garry's Mod, Web, Technique, Communautaire, Marketing,
 Partenariats, Animation.

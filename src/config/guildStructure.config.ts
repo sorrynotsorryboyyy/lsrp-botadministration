@@ -46,7 +46,7 @@ export interface CategoryConfig {
 }
 
 /**
- * Structure fixe du serveur — 5 catégories, 8 salons.
+ * Structure fixe du serveur — 5 catégories, 11 salons.
  *
  * Chaque domaine tient en un salon « hub » verrouillé, portant un panneau
  * interactif, éventuellement doublé d'un salon de discussion ouvert. Les salons
@@ -74,6 +74,12 @@ export const GUILD_STRUCTURE: CategoryConfig[] = [
         minGradeWrite: Grade.RESPONSABLE,
         topic: 'Échanges de la direction',
       },
+      {
+        name: '🔊 Vocal Direction',
+        key: 'DIRECTION_VOCAL',
+        type: ChannelType.GuildVoice,
+        minGradeView: Grade.RESPONSABLE,
+      },
     ],
   },
   {
@@ -92,6 +98,11 @@ export const GUILD_STRUCTURE: CategoryConfig[] = [
         key: 'GENERAL_DISCUSSION',
         type: ChannelType.GuildText,
         topic: "Discussion ouverte à toute l'équipe",
+      },
+      {
+        name: '🔊 Vocal Général',
+        key: 'GENERAL_VOCAL',
+        type: ChannelType.GuildVoice,
       },
       {
         // Seul salon visible d'un arrivant tant qu'aucun pôle ne lui est
@@ -158,7 +169,7 @@ export const GUILD_STRUCTURE: CategoryConfig[] = [
 ];
 
 /**
- * Salons répliqués dans chaque pôle — 2 par pôle.
+ * Salons répliqués dans chaque pôle — 3 par pôle.
  *
  * Les noms sont préfixés par le slug du pôle à la création (`web` → `#web`,
  * `#web-discussion`), afin que les mentions restent sans ambiguïté d'un pôle à
@@ -182,6 +193,14 @@ export const POLE_CHANNELS: ChannelConfig[] = [
     poleRestricted: true,
     topic: 'Échanges du pôle',
   },
+  {
+    // Nom vide comme le hub : les vocaux sont nommés « 🔊 <Pôle> », Discord ne
+    // normalisant ni la casse ni les espaces sur ce type de salon.
+    name: '',
+    key: 'VOCAL',
+    type: ChannelType.GuildVoice,
+    poleRestricted: true,
+  },
 ];
 
 /**
@@ -199,10 +218,20 @@ const RESERVED_CHANNEL_NAMES = new Set(
 /**
  * Compose le nom réel d'un salon de pôle.
  *
- * Un nom entrant en collision avec la structure fixe est préfixé par `pole-`
+ * Les vocaux reçoivent un libellé lisible (« 🔊 Web ») plutôt qu'un slug : ils
+ * ne servent pas de cible de mention et Discord y préserve casse et espaces.
+ * Les textuels en collision avec la structure fixe sont préfixés par `pole-`
  * (`#pole-general`), ce qui lève l'ambiguïté sans toucher aux autres pôles.
  */
-export function buildPoleChannelName(slug: string, config: ChannelConfig): string {
+export function buildPoleChannelName(
+  slug: string,
+  config: ChannelConfig,
+  displayName: string,
+): string {
+  if (config.type === ChannelType.GuildVoice) {
+    return config.name ? `🔊 ${displayName} ${config.name}` : `🔊 ${displayName}`;
+  }
+
   const base = config.name ? `${slug}-${config.name}` : slug;
 
   return RESERVED_CHANNEL_NAMES.has(base) ? `pole-${base}` : base;
